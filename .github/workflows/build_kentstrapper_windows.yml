@@ -1,0 +1,193 @@
+name: Build Kentstrapper OrcaSlicer (Windows)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - '.github/workflows/build_kentstrapper_windows.yml'
+
+  workflow_dispatch:
+    inputs:
+      create-release:
+        description: 'Create a GitHub Release after build'
+        type: boolean
+        default: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Step 1: check if Windows deps are already cached
+  check_cache:
+    name: Check Deps Cache (Windows)
+    runs-on: windows-latest
+    outputs:
+      cache-key: ${{ steps.set_outputs.outputs.cache-key }}
+      cache-path: ${{ steps.set_outputs.outputs.cache-path }}
+      valid-cache: ${{ steps.cache_deps.outputs.cache-hit }}
+    steps:
+      - name: Clone OrcaSlicer upstream (for deps hash)
+        run: git clone --depth 1 https://github.com/SoftFever/OrcaSlicer.git orcaslicer-source
+
+      - name: Set cache key and path
+        id: set_outputs
+        shell: pwsh
+        run: |
+          $depsHash = (Get-ChildItem -Recurse orcaslicer-source/deps | Get-FileHash | Measure-Object -Property Hash -Sum).Sum
+          echo "cache-key=windows-deps-$depsHash" >> $env:GITHUB_OUTPUT
+          echo "cache-path=${{ github.workspace }}/orcaslicer-source/deps/build/OrcaSlicer_dep" >> $env:GITHUB_OUTPUT
+
+      - name: Check cache
+        id: cache_deps
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/orcaslicer-source/deps/build/OrcaSlicer_dep
+          key: ${{ steps.set_outputs.outputs.cache-key }}
+          lookup-only: true
+
+  # Step 2: build deps only if not cached
+  build_deps:
+    name: Build Dependencies (Windows)
+    needs: check_cache
+    if: needs.check_cache.outputs.valid-cache != 'true'
+    runs-on: windows-latest
+    steps:
+      - name: Clone OrcaSlicer upstream
+        run: git clone --depth 1 https://github.com/SoftFever/OrcaSlicer.git orcaslicer-source
+
+      - uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "~4.3.0"
+          useLocalCache: true
+          useCloudCache: true
+
+      - name: Setup MSVC
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build dependencies
+        working-directory: ${{ github.workspace }}/orcaslicer-source
+        run: .\build_release_vs.bat deps
+
+      - name: Save deps to cache
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ needs.check_cache.outputs.cache-path }}
+          key: ${{ needs.check_cache.outputs.cache-key }}
+
+  # Step 3: build OrcaSlicer with Kentstrapper branding applied
+  build_slicer:
+    name: Build OrcaSlicer (Windows)
+    needs: [check_cache, build_deps]
+    if: always() && (needs.build_deps.result == 'success' || needs.build_deps.result == 'skipped')
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Kentstrapper patches
+        uses: actions/checkout@v4
+        with:
+          path: kentstrapper-patches
+
+      - name: Clone OrcaSlicer upstream
+        run: git clone --depth 1 https://github.com/SoftFever/OrcaSlicer.git orcaslicer-source
+
+      - name: Apply Kentstrapper branding (overlay our modified files)
+        shell: pwsh
+        run: |
+          $src = "${{ github.workspace }}/kentstrapper-patches/src"
+          $dst = "${{ github.workspace }}/orcaslicer-source/src"
+          Get-ChildItem -Path $src -Recurse -File | ForEach-Object {
+            $relative = $_.FullName.Substring($src.Length)
+            $target = Join-Path $dst $relative
+            $targetDir = Split-Path $target -Parent
+            if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null }
+            Copy-Item $_.FullName -Destination $target -Force
+            Write-Host "Patched: $relative"
+          }
+
+      - name: Restore cached deps
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.check_cache.outputs.cache-path }}
+          key: ${{ needs.check_cache.outputs.cache-key }}
+          fail-on-cache-miss: true
+
+      - uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "~4.3.0"
+          useLocalCache: true
+          useCloudCache: true
+
+      - name: Setup MSVC
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Install NSIS
+        run: choco install nsis -y
+
+      - name: Get version
+        id: get_ver
+        working-directory: ${{ github.workspace }}/orcaslicer-source
+        shell: pwsh
+        run: |
+          $versionContent = Get-Content version.inc -Raw
+          if ($versionContent -match 'set\(SoftFever_VERSION "(.*?)"\)') { $ver = $matches[1] }
+          $ver = "V$ver-Kentstrapper"
+          echo "ver=$ver" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
+          echo "date=$(Get-Date -Format 'yyyyMMdd')" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
+
+      - name: Build OrcaSlicer
+        working-directory: ${{ github.workspace }}/orcaslicer-source
+        env:
+          WindowsSdkDir: 'C:\Program Files (x86)\Windows Kits\10\'
+          WindowsSDKVersion: '10.0.26100.0\'
+        run: .\build_release_vs.bat slicer
+
+      - name: Create installer
+        working-directory: ${{ github.workspace }}/orcaslicer-source/build
+        run: cpack -G NSIS
+
+      - name: Pack portable zip
+        working-directory: ${{ github.workspace }}/orcaslicer-source/build
+        shell: cmd
+        run: '"C:/Program Files/7-Zip/7z.exe" a -tzip KentrapperSlicer_Windows_${{ env.ver }}_portable.zip OrcaSlicer'
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KentrapperSlicer_Windows_${{ env.ver }}_installer
+          path: ${{ github.workspace }}/orcaslicer-source/build/OrcaSlicer*.exe
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KentrapperSlicer_Windows_${{ env.ver }}_portable
+          path: ${{ github.workspace }}/orcaslicer-source/build/KentrapperSlicer_Windows_${{ env.ver }}_portable.zip
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && inputs.create-release == true)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: kentstrapper-${{ env.ver }}-${{ env.date }}
+          name: "Kentstrapper OrcaSlicer ${{ env.ver }} (${{ env.date }})"
+          body: |
+            ## Kentstrapper OrcaSlicer - Windows Build
+
+            OrcaSlicer rebranded con i colori aziendali Kentstrapper (nero & arancione #FF8800).
+
+            ### Download
+            - **Installer** (.exe) - consigliato, installa automaticamente
+            - **Portable** (.zip) - nessuna installazione, decomprimi e avvia
+
+            ### Modifiche rispetto a OrcaSlicer ufficiale
+            - Colore accent: teal #009688 -> arancione Kentstrapper #FF8800
+            - Pulsanti confirm/hover aggiornati
+            - Bordi input focus aggiornati
+            - Mappatura colori dark mode aggiornata
+          draft: false
+          prerelease: false
+          files: |
+            ${{ github.workspace }}/orcaslicer-source/build/OrcaSlicer*.exe
+            ${{ github.workspace }}/orcaslicer-source/build/KentrapperSlicer_Windows_${{ env.ver }}_portable.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
