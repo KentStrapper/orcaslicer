@@ -67,6 +67,17 @@ jobs:
         working-directory: orcaslicer-source
         run: .\build_release_vs.bat deps
 
+      - name: Apply Kentstrapper patched source files
+        shell: pwsh
+        run: |
+          if (Test-Path "kentstrapper-patches\src") {
+            Write-Host "Copying Kentstrapper patched source files over OrcaSlicer source..."
+            Copy-Item "kentstrapper-patches\src\*" "orcaslicer-source\src\" -Recurse -Force
+            Write-Host "  Done."
+          } else {
+            Write-Host "No src/ patches found, skipping."
+          }
+
       - name: Apply Kentstrapper branding - global color replacement
         shell: pwsh
         run: |
