@@ -33,8 +33,8 @@ jobs:
         with:
           path: kentstrapper-patches
 
-      - name: Clone OrcaSlicer upstream
-        run: git clone --depth 1 https://github.com/SoftFever/OrcaSlicer.git orcaslicer-source
+      - name: Clone OrcaSlicer v2.3.2 (stable)
+        run: git clone --depth 1 --branch v2.3.2 https://github.com/SoftFever/OrcaSlicer.git orcaslicer-source
 
       - name: Get OrcaSlicer commit SHA (for cache key)
         id: orca_sha
@@ -65,19 +65,81 @@ jobs:
         working-directory: orcaslicer-source
         run: .\build_release_vs.bat deps
 
-      - name: Apply Kentstrapper branding
-        shell: pwsh
+      - name: Apply Kentstrapper branding — global color replacement
+        shell: python
         run: |
-          $src = "${{ github.workspace }}\kentstrapper-patches\src"
-          $dst = "${{ github.workspace }}\orcaslicer-source\src"
-          Get-ChildItem -Path $src -Recurse -File | ForEach-Object {
-            $relative = $_.FullName.Substring($src.Length)
-            $target = Join-Path $dst $relative
-            $targetDir = Split-Path $target -Parent
-            if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null }
-            Copy-Item $_.FullName -Destination $target -Force
-            Write-Host "Patched: $relative"
-          }
+          import os
+
+          # Teal → Orange color map (all variants found in OrcaSlicer source)
+          replacements = [
+              # Primary accent teal → Kentstrapper orange
+              ("#009688", "#FF8800"),
+              ("#009688".lower(), "#ff8800"),
+              ("009688", "FF8800"),
+              ("0x009688", "0xFF8800"),
+              # Hover teal → hover orange
+              ("#26A69A", "#CC6E00"),
+              ("#26a69a", "#cc6e00"),
+              ("26A69A", "CC6E00"),
+              ("26a69a", "cc6e00"),
+              ("0x26A69A", "0xCC6E00"),
+              # Hover+checked teal → hover+checked orange
+              ("0x52c7b8", "0xFFAA33"),
+              ("52c7b8", "FFAA33"),
+              ("52C7B8", "FFAA33"),
+              # Dark mode teal → dark mode orange
+              ("#00675b", "#CC6E00"),
+              ("#00675B", "#CC6E00"),
+              ("00675b", "CC6E00"),
+              ("00675B", "CC6E00"),
+              # Confirm hover teal → confirm hover orange
+              ("22bfb0", "FF9933"),
+              ("22BFB0", "FF9933"),
+              ("00FFD4", "FFAA44"),
+              # Light teal tints → light orange tints
+              ("BFE1DE", "FFE0B2"),
+              ("bfe1de", "ffe0b2"),
+              ("E5F0EE", "FFF3E0"),
+              ("e5f0ee", "fff3e0"),
+              ("EDFAF2", "FFF8EE"),
+              ("edfaf2", "fff8ee"),
+              ("EBF9F0", "FFF8EE"),
+              ("ebf9f0", "fff8ee"),
+              ("D7E8DE", "FFE8CC"),
+              ("d7e8de", "ffe8cc"),
+              ("DBFDD5", "FFE8CC"),
+              # RGB values
+              ("0, 150, 136", "255, 136, 0"),
+              ("0,150,136",   "255,136,0"),
+          ]
+
+          exts = {'.cpp', '.hpp', '.h', '.cxx', '.c', '.svg', '.xml', '.json', '.inc'}
+          search_dirs = [
+              os.path.join('orcaslicer-source', 'src'),
+              os.path.join('orcaslicer-source', 'resources'),
+          ]
+
+          total = 0
+          for search_dir in search_dirs:
+              for root, dirs, files in os.walk(search_dir):
+                  for fname in files:
+                      if os.path.splitext(fname)[1].lower() not in exts:
+                          continue
+                      fpath = os.path.join(root, fname)
+                      try:
+                          with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
+                              content = f.read()
+                          original = content
+                          for old, new in replacements:
+                              content = content.replace(old, new)
+                          if content != original:
+                              with open(fpath, 'w', encoding='utf-8') as f:
+                                  f.write(content)
+                              total += 1
+                              print(f"Patched: {fpath}")
+                      except Exception as e:
+                          print(f"  SKIP {fpath}: {e}")
+          print(f"\nTotal files patched: {total}")
 
       - name: Install NSIS
         run: choco install nsis -y
@@ -128,19 +190,18 @@ jobs:
           tag_name: kentstrapper-${{ env.ver }}-${{ env.date }}
           name: "Kentstrapper OrcaSlicer ${{ env.ver }} (${{ env.date }})"
           body: |
-            ## Kentstrapper OrcaSlicer - Windows Build
+            ## Kentstrapper OrcaSlicer ${{ env.ver }} — Windows Build
 
-            OrcaSlicer rebranded con i colori aziendali Kentstrapper (nero & arancione #FF8800).
+            OrcaSlicer **v2.3.2 stabile** rebranded con i colori aziendali Kentstrapper.
 
             ### Download
-            - **Installer** (.exe) - consigliato, installa automaticamente
-            - **Portable** (.zip) - nessuna installazione, decomprimi e avvia
+            - **Installer** (`.exe`) — consigliato, installa automaticamente le dipendenze
+            - **Portable** (`.zip`) — nessuna installazione, decomprimi e avvia
 
             ### Modifiche rispetto a OrcaSlicer ufficiale
-            - Colore accent: teal #009688 -> arancione Kentstrapper #FF8800
-            - Pulsanti confirm/hover aggiornati
-            - Bordi input focus aggiornati
-            - Mappatura colori dark mode aggiornata
+            - Colore accent: teal `#009688` → arancione Kentstrapper `#FF8800` (applicato su tutti i file sorgente)
+            - Tutti i toni teal/verde sostituiti con arancione e varianti
+            - Mappatura dark mode aggiornata
           draft: false
           prerelease: false
           files: |
