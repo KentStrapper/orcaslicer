@@ -67,28 +67,29 @@ jobs:
         working-directory: orcaslicer-source
         run: .\build_release_vs.bat deps
 
-      - name: Apply Kentstrapper branding — global color replacement
-        shell: python
+      - name: Apply Kentstrapper branding - global color replacement
+        shell: pwsh
         run: |
+          $script = @"
           import os
 
           replacements = [
-              ("#009688", "#FF8800"), ("#009688".lower(), "#ff8800"),
-              ("009688", "FF8800"), ("0x009688", "0xFF8800"),
-              ("#26A69A", "#CC6E00"), ("#26a69a", "#cc6e00"),
-              ("26A69A", "CC6E00"),  ("26a69a", "cc6e00"),
-              ("0x26A69A", "0xCC6E00"),
-              ("0x52c7b8", "0xFFAA33"), ("52c7b8", "FFAA33"), ("52C7B8", "FFAA33"),
-              ("#00675b", "#CC6E00"), ("#00675B", "#CC6E00"),
-              ("00675b", "CC6E00"),   ("00675B", "CC6E00"),
-              ("22bfb0", "FF9933"),   ("22BFB0", "FF9933"), ("00FFD4", "FFAA44"),
-              ("BFE1DE", "FFE0B2"),   ("bfe1de", "ffe0b2"),
-              ("E5F0EE", "FFF3E0"),   ("e5f0ee", "fff3e0"),
-              ("EDFAF2", "FFF8EE"),   ("edfaf2", "fff8ee"),
-              ("EBF9F0", "FFF8EE"),   ("ebf9f0", "fff8ee"),
-              ("D7E8DE", "FFE8CC"),   ("d7e8de", "ffe8cc"),
-              ("DBFDD5", "FFE8CC"),
-              ("0, 150, 136", "255, 136, 0"), ("0,150,136", "255,136,0"),
+              ('#009688', '#FF8800'), ('#009688'.lower(), '#ff8800'),
+              ('009688', 'FF8800'), ('0x009688', '0xFF8800'),
+              ('#26A69A', '#CC6E00'), ('#26a69a', '#cc6e00'),
+              ('26A69A', 'CC6E00'), ('26a69a', 'cc6e00'),
+              ('0x26A69A', '0xCC6E00'),
+              ('0x52c7b8', '0xFFAA33'), ('52c7b8', 'FFAA33'), ('52C7B8', 'FFAA33'),
+              ('#00675b', '#CC6E00'), ('#00675B', '#CC6E00'),
+              ('00675b', 'CC6E00'), ('00675B', 'CC6E00'),
+              ('22bfb0', 'FF9933'), ('22BFB0', 'FF9933'), ('00FFD4', 'FFAA44'),
+              ('BFE1DE', 'FFE0B2'), ('bfe1de', 'ffe0b2'),
+              ('E5F0EE', 'FFF3E0'), ('e5f0ee', 'fff3e0'),
+              ('EDFAF2', 'FFF8EE'), ('edfaf2', 'fff8ee'),
+              ('EBF9F0', 'FFF8EE'), ('ebf9f0', 'fff8ee'),
+              ('D7E8DE', 'FFE8CC'), ('d7e8de', 'ffe8cc'),
+              ('DBFDD5', 'FFE8CC'),
+              ('0, 150, 136', '255, 136, 0'), ('0,150,136', '255,136,0'),
           ]
 
           exts = {'.cpp', '.hpp', '.h', '.cxx', '.c', '.svg', '.xml', '.json', '.inc', '.txt'}
@@ -114,10 +115,13 @@ jobs:
                               with open(fpath, 'w', encoding='utf-8') as f:
                                   f.write(content)
                               total += 1
-                              print(f"Patched: {fpath}")
+                              print(f'Patched: {fpath}')
                       except Exception as e:
-                          print(f"  SKIP {fpath}: {e}")
-          print(f"\nTotal files patched: {total}")
+                          print(f'  SKIP {fpath}: {e}')
+          print(f'\nTotal files patched: {total}')
+          "@
+          Set-Content -Path "patch_colors.py" -Value $script
+          python patch_colors.py
 
       - name: Apply Kentstrapper logo (if provided)
         shell: pwsh
@@ -125,7 +129,6 @@ jobs:
           $logoSrc = "kentstrapper-patches\branding\logo.png"
           if (Test-Path $logoSrc) {
             Write-Host "Applying Kentstrapper logo..."
-            # Replace all OrcaSlicer icon sizes
             $iconDirs = @(
               "orcaslicer-source\resources\images",
               "orcaslicer-source\resources\icons"
@@ -174,26 +177,21 @@ jobs:
           $profilesSrc = "kentstrapper-patches\profiles"
           if (Test-Path $profilesSrc) {
             Write-Host "Copying Kentstrapper profiles to installer staging..."
-            # These will be bundled in the NSIS installer and copied to %APPDATA%\OrcaSlicer\user\default\
             $dest = "orcaslicer-source\resources\kentstrapper_profiles"
             New-Item -ItemType Directory -Path $dest -Force | Out-Null
             Copy-Item "$profilesSrc\*" $dest -Recurse -Force
             Write-Host "  Profiles staged at: $dest"
 
-            # Patch the NSIS installer script to copy profiles on install
             $nsisScript = Get-ChildItem -Path "orcaslicer-source" -Recurse -Filter "*.nsi" | Select-Object -First 1
             if ($nsisScript) {
               $nsiContent = Get-Content $nsisScript.FullName -Raw
-              $profileInstall = @'
-
-              ; Kentstrapper pre-installed profiles
-              SetOutPath "$APPDATA\OrcaSlicer\user\default"
-              File /r "${RESOURCEDIR}\kentstrapper_profiles\*"
-'@
-              # Insert before the final Section end
-              $nsiContent = $nsiContent -replace '(SectionEnd\s*$)', "$profileInstall`n`$1"
+              $line1 = '              ; Kentstrapper pre-installed profiles'
+              $line2 = '              SetOutPath "$APPDATA\OrcaSlicer\user\default"'
+              $line3 = '              File /r "${RESOURCEDIR}\kentstrapper_profiles\*"'
+              $profileInstall = "`n$line1`n$line2`n$line3`n"
+              $nsiContent = $nsiContent -replace '(?m)(SectionEnd[ \t]*)$', "$profileInstall`n`$1"
               Set-Content $nsisScript.FullName $nsiContent
-              Write-Host "  NSIS script patched for profiles: $($nsisScript.FullName)"
+              Write-Host "  NSIS script patched: $($nsisScript.FullName)"
             }
           } else {
             Write-Host "No profiles/ folder found, skipping profile bundling."
@@ -248,16 +246,16 @@ jobs:
           tag_name: kentstrapper-${{ env.ver }}-${{ env.date }}
           name: "Kentstrapper OrcaSlicer ${{ env.ver }} (${{ env.date }})"
           body: |
-            ## Kentstrapper OrcaSlicer ${{ env.ver }} — Windows Build
+            ## Kentstrapper OrcaSlicer ${{ env.ver }} - Windows Build
 
             OrcaSlicer **v2.3.2 stabile** rebranded con i colori aziendali Kentstrapper.
 
             ### Download
-            - **Installer** (`.exe`) — consigliato, include profili pre-installati
-            - **Portable** (`.zip`) — nessuna installazione, decomprimi e avvia
+            - **Installer** (`.exe`) - consigliato, include profili pre-installati
+            - **Portable** (`.zip`) - nessuna installazione, decomprimi e avvia
 
             ### Modifiche
-            - Colore accent: teal → arancione Kentstrapper #FF8800 (tutti i file)
+            - Colore accent: teal -> arancione Kentstrapper #FF8800 (tutti i file)
             - Logo e splash screen Kentstrapper
             - Profili filament/machine/process pre-installati
           draft: false
