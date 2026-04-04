@@ -1,0 +1,13 @@
+{
+    "compatible_printers": [
+        "MyKlipper 0.4 nozzle"
+    ],
+    "filament_settings_id": [
+        "KS_PLA_POLYTERRA_"
+    ],
+    "from": "User",
+    "inherits": "PolyTerra PLA @System",
+    "is_custom_defined": "0",
+    "name": "KS_PLA_POLYTERRA_",
+    "version": "2.3.1.10"
+}

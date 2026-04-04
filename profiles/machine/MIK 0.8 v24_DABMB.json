@@ -1,0 +1,49 @@
+{
+    "bed_custom_model": "C:\\\\Users\\\\aless\\\\Desktop\\\\KENTSTRAPPER\\\\PEZZI STAMPANTI\\\\PIATTO PER PRUSA\\\\ZeroHS_bed.stl",
+    "bed_custom_texture": "C:\\\\Users\\\\aless\\\\Desktop\\\\KENTSTRAPPER\\\\PEZZI STAMPANTI\\\\PIATTO PER PRUSA\\\\immagine_piatto.png",
+    "bed_exclude_area": [],
+    "extruder_clearance_height_to_rod": "15",
+    "extruder_clearance_radius": "100",
+    "from": "User",
+    "inherits": "MyKlipper 0.4 nozzle",
+    "is_custom_defined": "0",
+    "layer_change_gcode": "",
+    "machine_end_gcode": "END_PRINT",
+    "machine_start_gcode": ";;===== date: 18012026 =====================\n;INFO PROFILO ZEROHS08 V24 Nuovo Fw\n\nSET_PIN PIN=caselight VALUE=100 ;accendi la luce\nM104 S[nozzle_temperature_initial_layer]\nM190 S[bed_temperature_initial_layer_single]\nM109 S[nozzle_temperature_initial_layer]\n\nSTART_PRINT\n",
+    "max_layer_height": [
+        "0.55"
+    ],
+    "min_layer_height": [
+        "0.16"
+    ],
+    "name": "MIK 0.8 v24_DABMB",
+    "nozzle_diameter": [
+        "0.8"
+    ],
+    "print_host": "http://192.168.1.35",
+    "printable_area": [
+        "0x0",
+        "1000x0",
+        "1000x1000",
+        "0x1000"
+    ],
+    "printable_height": "1000",
+    "printer_settings_id": "MIK 0.8 v24_DABMB",
+    "retract_before_wipe": [
+        "0%"
+    ],
+    "retraction_length": [
+        "3"
+    ],
+    "thumbnails": "48x48/PNG, 303x303/PNG",
+    "version": "1.6.0.0",
+    "wipe_distance": [
+        "2"
+    ],
+    "z_hop": [
+        "0.3"
+    ],
+    "z_hop_types": [
+        "Auto Lift"
+    ]
+}

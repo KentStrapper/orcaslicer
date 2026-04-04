@@ -1,0 +1,61 @@
+{
+    "compatible_printers": [
+        "MyKlipper 0.4 nozzle"
+    ],
+    "enable_pressure_advance": [
+        "1"
+    ],
+    "filament_deretraction_speed": [
+        "100"
+    ],
+    "filament_max_volumetric_speed": [
+        "16"
+    ],
+    "filament_retract_before_wipe": [
+        "70%"
+    ],
+    "filament_retraction_length": [
+        "0.8"
+    ],
+    "filament_retraction_minimum_travel": [
+        "1"
+    ],
+    "filament_retraction_speed": [
+        "100"
+    ],
+    "filament_settings_id": [
+        "KS PLA_FORMFUTURA_28012026_v3"
+    ],
+    "filament_vendor": [
+        "KENTSTRAPPER"
+    ],
+    "filament_wipe_distance": [
+        "1"
+    ],
+    "from": "User",
+    "hot_plate_temp": [
+        "60"
+    ],
+    "hot_plate_temp_initial_layer": [
+        "60"
+    ],
+    "inherits": "Bambu PLA Basic @System",
+    "is_custom_defined": "0",
+    "name": "KS PLA_FORMFUTURA_28012026_v3",
+    "nozzle_temperature": [
+        "215"
+    ],
+    "nozzle_temperature_initial_layer": [
+        "215"
+    ],
+    "pressure_advance": [
+        "0.02874"
+    ],
+    "slow_down_layer_time": [
+        "6"
+    ],
+    "slow_down_min_speed": [
+        "20"
+    ],
+    "version": "2.3.0.3"
+}

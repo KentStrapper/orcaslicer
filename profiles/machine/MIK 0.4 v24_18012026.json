@@ -1,0 +1,61 @@
+{
+    "bed_exclude_area": [],
+    "deretraction_speed": [
+        "40"
+    ],
+    "emit_machine_limits_to_gcode": "0",
+    "extruder_clearance_height_to_rod": "15",
+    "extruder_clearance_radius": "100",
+    "from": "User",
+    "inherits": "MyKlipper 0.4 nozzle",
+    "is_custom_defined": "0",
+    "layer_change_gcode": "",
+    "machine_end_gcode": "END_PRINT",
+    "machine_max_acceleration_x": [
+        "10000",
+        "20000"
+    ],
+    "machine_max_acceleration_y": [
+        "6000",
+        "20000"
+    ],
+    "machine_max_speed_x": [
+        "400",
+        "200"
+    ],
+    "machine_max_speed_y": [
+        "400",
+        "200"
+    ],
+    "machine_start_gcode": ";;===== date: 18012026 =====================\n;INFO PROFILO ZEROHS04 V24 Nuovo Fw\n\n\nSET_PIN PIN=caselight VALUE=100 ;accendi la luce\nM104 S[nozzle_temperature_initial_layer]\nM190 S[bed_temperature_initial_layer_single]\nM109 S[nozzle_temperature_initial_layer]\n\nSTART_PRINT\n",
+    "min_layer_height": [
+        "0.12"
+    ],
+    "name": "MIK 0.4 v24_18012026",
+    "print_host": "http://192.168.1.35",
+    "printable_area": [
+        "0x0",
+        "1000x0",
+        "1000x1000",
+        "0x1000"
+    ],
+    "printable_height": "1000",
+    "printer_settings_id": "MIK 0.4 v24_18012026",
+    "retract_before_wipe": [
+        "0%"
+    ],
+    "retraction_length": [
+        "0.4"
+    ],
+    "retraction_speed": [
+        "60"
+    ],
+    "thumbnails": "48x48/PNG, 303x303/PNG",
+    "version": "1.6.0.0",
+    "z_hop": [
+        "0.2"
+    ],
+    "z_hop_types": [
+        "Auto Lift"
+    ]
+}

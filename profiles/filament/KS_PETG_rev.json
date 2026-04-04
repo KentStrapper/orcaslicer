@@ -1,0 +1,16 @@
+{
+    "compatible_printers": [
+        "MyKlipper 0.4 nozzle"
+    ],
+    "filament_settings_id": [
+        "KS_PETG_rev"
+    ],
+    "from": "User",
+    "full_fan_speed_layer": [
+        "4"
+    ],
+    "inherits": "PolyLite PETG @System",
+    "is_custom_defined": "0",
+    "name": "KS_PETG_rev",
+    "version": "2.3.0.3"
+}

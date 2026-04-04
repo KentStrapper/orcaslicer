@@ -1,0 +1,40 @@
+{
+    "compatible_printers": [
+        "MyKlipper 0.4 nozzle"
+    ],
+    "fan_max_speed": [
+        "50"
+    ],
+    "fan_min_speed": [
+        "30"
+    ],
+    "filament_flow_ratio": [
+        "0.94"
+    ],
+    "filament_max_volumetric_speed": [
+        "12"
+    ],
+    "filament_settings_id": [
+        "KS_FORMFUTURA_PETG_rev_19012026"
+    ],
+    "filament_vendor": [
+        "FORMFUTURA"
+    ],
+    "from": "User",
+    "full_fan_speed_layer": [
+        "4"
+    ],
+    "inherits": "PolyLite PETG @System",
+    "is_custom_defined": "0",
+    "name": "KS_FORMFUTURA_PETG_rev_19012026",
+    "nozzle_temperature": [
+        "245"
+    ],
+    "nozzle_temperature_initial_layer": [
+        "245"
+    ],
+    "overhang_fan_speed": [
+        "100"
+    ],
+    "version": "2.3.0.3"
+}

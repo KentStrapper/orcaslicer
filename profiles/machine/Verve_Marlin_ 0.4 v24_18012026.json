@@ -1,0 +1,48 @@
+{
+    "bed_custom_model": "C:\\\\Users\\\\aless\\\\Desktop\\\\KENTSTRAPPER\\\\PEZZI STAMPANTI\\\\PIATTO PER PRUSA\\\\ZeroHS_bed.stl",
+    "bed_custom_texture": "C:\\\\Users\\\\aless\\\\Desktop\\\\KENTSTRAPPER\\\\PEZZI STAMPANTI\\\\PIATTO PER PRUSA\\\\immagine_piatto.png",
+    "bed_exclude_area": [],
+    "deretraction_speed": [
+        "40"
+    ],
+    "emit_machine_limits_to_gcode": "0",
+    "extruder_clearance_height_to_rod": "15",
+    "extruder_clearance_radius": "100",
+    "from": "User",
+    "gcode_flavor": "marlin2",
+    "inherits": "MyKlipper 0.4 nozzle",
+    "is_custom_defined": "0",
+    "layer_change_gcode": "",
+    "machine_end_gcode": "M140 S0\nM104 T0 S0 ; turn off extruder\nM140 S0 ; turn off bed\nM106 S0 ;\nG28 X0 Y0 ; home all axes\nM84 ; disable motors\nM82 ;absolute extrusion mode\nM104 S0",
+    "machine_start_gcode": "T0;\nM906 X1100;\nM906 Y1100;\nM92 E423;\nM851 Z-0.30;\nG28;\nG29;\nM500; \nG92 E0;\nM99 X0 Y0 Z0 E0;\nM201 X500 Y500;\nM204 P500 R1000;\nG92 E0;\nG1 E-2 F106;\nG92 E0;\nG1 Z5 F300;\nG1 X0 Y0 F2000;\nG92 E0;\n\n",
+    "min_layer_height": [
+        "0.12"
+    ],
+    "name": "Verve_Marlin_ 0.4 v24_18012026",
+    "print_host": "http://192.168.1.96",
+    "printable_area": [
+        "0x0",
+        "200x0",
+        "200x200",
+        "0x200"
+    ],
+    "printable_height": "200",
+    "printer_settings_id": "Verve_Marlin_ 0.4 v24_18012026",
+    "retract_before_wipe": [
+        "0%"
+    ],
+    "retraction_length": [
+        "0.4"
+    ],
+    "retraction_speed": [
+        "60"
+    ],
+    "thumbnails": "48x48/PNG, 303x303/PNG",
+    "version": "1.6.0.0",
+    "z_hop": [
+        "0"
+    ],
+    "z_hop_types": [
+        "Auto Lift"
+    ]
+}

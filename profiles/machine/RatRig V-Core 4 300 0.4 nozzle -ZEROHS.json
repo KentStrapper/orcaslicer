@@ -1,0 +1,16 @@
+{
+    "from": "User",
+    "inherits": "RatRig V-Core 4 300 0.4 nozzle",
+    "is_custom_defined": "0",
+    "machine_start_gcode": ";;===== date: 29012026=====================\n;INFO PROFILO ZEROHS04 V24 da rat Nuovo Fw\n\n\nSET_PIN PIN=caselight VALUE=100 ;accendi la luce\nM104 S[nozzle_temperature_initial_layer]\nM190 S[bed_temperature_initial_layer_single]\nM109 S[nozzle_temperature_initial_layer]\n\nSTART_PRINT\n",
+    "name": "RatRig V-Core 4 300 0.4 nozzle -ZEROHS",
+    "printable_area": [
+        "0x0",
+        "320x0",
+        "320x320",
+        "0x320"
+    ],
+    "printable_height": "320",
+    "printer_settings_id": "RatRig V-Core 4 300 0.4 nozzle -ZEROHS",
+    "version": "2.3.1.10"
+}

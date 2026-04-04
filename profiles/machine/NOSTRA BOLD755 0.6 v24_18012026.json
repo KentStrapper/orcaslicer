@@ -1,0 +1,52 @@
+{
+    "bed_custom_model": "C:\\\\Users\\\\kents\\\\Desktop\\\\progetti in corso\\\\OrcaSlicer_Windows_V2.3.1_portable\\\\piatti stampanti\\\\piatto bold100226stl.stl",
+    "bed_custom_texture": "C:\\\\Users\\\\kents\\\\Desktop\\\\progetti in corso\\\\OrcaSlicer_Windows_V2.3.1_portable\\\\piatti stampanti\\\\immagine_piatto_B755.png",
+    "bed_exclude_area": [],
+    "deretraction_speed": [
+        "35"
+    ],
+    "extruder_clearance_height_to_rod": "15",
+    "extruder_clearance_radius": "100",
+    "from": "User",
+    "inherits": "MyKlipper 0.4 nozzle",
+    "is_custom_defined": "0",
+    "layer_change_gcode": "",
+    "machine_end_gcode": "END_PRINT",
+    "machine_start_gcode": ";;===== date: 18012026 =====================\n;INFO PROFILO ZEROHS06 V24 Nuovo Fw\n\nSET_PIN PIN=caselight VALUE=100 ;accendi la luce\nM104 S[nozzle_temperature_initial_layer]\nM190 S[bed_temperature_initial_layer_single]\nM109 S[nozzle_temperature_initial_layer]\n\nSTART_PRINT\n",
+    "max_layer_height": [
+        "0.4"
+    ],
+    "min_layer_height": [
+        "0.2"
+    ],
+    "name": "NOSTRA BOLD755 0.6 v24_18012026",
+    "nozzle_diameter": [
+        "0.6"
+    ],
+    "print_host": "http://192.168.1.125",
+    "printable_area": [
+        "0x0",
+        "700x0",
+        "700x500",
+        "0x500"
+    ],
+    "printable_height": "500",
+    "printer_settings_id": "NOSTRA BOLD755 0.6 v24_18012026",
+    "retract_before_wipe": [
+        "0%"
+    ],
+    "retraction_length": [
+        "0.6"
+    ],
+    "retraction_speed": [
+        "50"
+    ],
+    "thumbnails": "48x48/PNG, 303x303/PNG",
+    "version": "1.6.0.0",
+    "z_hop": [
+        "0.3"
+    ],
+    "z_hop_types": [
+        "Auto Lift"
+    ]
+}

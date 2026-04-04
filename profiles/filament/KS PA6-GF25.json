@@ -1,0 +1,58 @@
+{
+    "compatible_printers": [
+        "MyKlipper 0.4 nozzle"
+    ],
+    "default_filament_colour": [
+        "#808080"
+    ],
+    "enable_pressure_advance": [
+        "1"
+    ],
+    "fan_max_speed": [
+        "15"
+    ],
+    "filament_flow_ratio": [
+        "0.97"
+    ],
+    "filament_max_volumetric_speed": [
+        "4"
+    ],
+    "filament_retraction_length": [
+        "2"
+    ],
+    "filament_settings_id": [
+        "KS PA6-GF25"
+    ],
+    "filament_shrink": [
+        "99%"
+    ],
+    "from": "User",
+    "full_fan_speed_layer": [
+        "4"
+    ],
+    "hot_plate_temp": [
+        "80"
+    ],
+    "hot_plate_temp_initial_layer": [
+        "80"
+    ],
+    "inherits": "Fiberon PA6-GF @System",
+    "is_custom_defined": "0",
+    "name": "KS PA6-GF25",
+    "nozzle_temperature": [
+        "260"
+    ],
+    "nozzle_temperature_initial_layer": [
+        "260"
+    ],
+    "overhang_fan_speed": [
+        "35"
+    ],
+    "pressure_advance": [
+        "0.055"
+    ],
+    "slow_down_layer_time": [
+        "8"
+    ],
+    "version": "2.3.0.3"
+}

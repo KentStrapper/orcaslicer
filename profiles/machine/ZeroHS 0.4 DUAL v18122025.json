@@ -1,0 +1,127 @@
+{
+    "bed_custom_model": "C:\\\\Users\\\\kents\\\\Desktop\\\\KENTSTRAPPER\\\\PEZZI STAMPANTI\\\\PIATTO PER PRUSA\\\\zero ht per slicer v2.stl",
+    "bed_custom_texture": "C:\\\\Users\\\\kents\\\\Desktop\\\\KENTSTRAPPER\\\\PEZZI STAMPANTI\\\\PIATTO PER PRUSA\\\\immagine_piatto.png",
+    "bed_exclude_area": [],
+    "deretraction_speed": [
+        "30",
+        "30"
+    ],
+    "extruder_clearance_height_to_rod": "15",
+    "extruder_clearance_radius": "100",
+    "extruder_colour": [
+        "#FCE94F",
+        "#FCE94F"
+    ],
+    "extruder_offset": [
+        "0x0",
+        "0x0"
+    ],
+    "from": "User",
+    "inherits": "MyKlipper 0.4 nozzle",
+    "is_custom_defined": "0",
+    "layer_change_gcode": "",
+    "long_retractions_when_cut": [
+        "0",
+        "0"
+    ],
+    "machine_end_gcode": "END_PRINT",
+    "machine_start_gcode": ";;===== date: 18122025 =====================\n;INFO PROFILO ZEROHS DUAL 04 V20 Nuovo Fw\n\nM104 S[nozzle_temperature_initial_layer]\nM190 S[bed_temperature_initial_layer_single]\nM109 S[nozzle_temperature_initial_layer]\n\nSTART_PRINT\n",
+    "max_layer_height": [
+        "0.32",
+        "0.32"
+    ],
+    "min_layer_height": [
+        "0.12",
+        "0.12"
+    ],
+    "name": "ZeroHS 0.4 DUAL v18122025",
+    "nozzle_diameter": [
+        "0.4",
+        "0.4"
+    ],
+    "print_host": "http://192.168.1.49",
+    "printable_area": [
+        "0x0",
+        "320x0",
+        "320x320",
+        "0x320"
+    ],
+    "printable_height": "320",
+    "printer_settings_id": "ZeroHS 0.4 DUAL v18122025",
+    "purge_in_prime_tower": "0",
+    "retract_before_wipe": [
+        "0%",
+        "0%"
+    ],
+    "retract_length_toolchange": [
+        "2",
+        "2"
+    ],
+    "retract_lift_above": [
+        "0",
+        "0"
+    ],
+    "retract_lift_below": [
+        "0",
+        "0"
+    ],
+    "retract_lift_enforce": [
+        "All Surfaces",
+        "All Surfaces"
+    ],
+    "retract_on_top_layer": [
+        "1",
+        "1"
+    ],
+    "retract_restart_extra": [
+        "0",
+        "0"
+    ],
+    "retract_restart_extra_toolchange": [
+        "0",
+        "0"
+    ],
+    "retract_when_changing_layer": [
+        "1",
+        "1"
+    ],
+    "retraction_distances_when_cut": [
+        "18",
+        "18"
+    ],
+    "retraction_length": [
+        "0.8",
+        "0.8"
+    ],
+    "retraction_minimum_travel": [
+        "1",
+        "1"
+    ],
+    "retraction_speed": [
+        "30",
+        "30"
+    ],
+    "single_extruder_multi_material": "0",
+    "thumbnails": "48x48/PNG, 303x303/PNG",
+    "travel_slope": [
+        "3",
+        "3"
+    ],
+    "version": "1.6.0.0",
+    "wipe": [
+        "1",
+        "1"
+    ],
+    "wipe_distance": [
+        "1",
+        "1"
+    ],
+    "z_hop": [
+        "0.4",
+        "0.4"
+    ],
+    "z_hop_types": [
+        "Auto Lift",
+        "Auto Lift"
+    ]
+}
