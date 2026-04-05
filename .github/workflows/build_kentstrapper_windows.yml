@@ -68,7 +68,7 @@ jobs:
         working-directory: orcaslicer-source
         run: .\build_release_vs.bat deps
 
-      # ── BRANDING STEP 1: Copy patched C++ source files ───────────────────
+      # ── PATCH 1: Copy patched C++ source files ────────────────────────────
       - name: Apply Kentstrapper patched source files
         shell: pwsh
         run: |
@@ -77,8 +77,8 @@ jobs:
             Write-Host "Copying patched source files..."
             $files = Get-ChildItem -Path $srcDir -Recurse -File
             foreach ($f in $files) {
-              $rel  = $f.FullName.Substring((Resolve-Path $srcDir).Path.Length + 1)
-              $dest = Join-Path "orcaslicer-source\src" $rel
+              $rel     = $f.FullName.Substring((Resolve-Path $srcDir).Path.Length + 1)
+              $dest    = Join-Path "orcaslicer-source\src" $rel
               $destDir = Split-Path $dest -Parent
               New-Item -ItemType Directory -Path $destDir -Force | Out-Null
               Copy-Item $f.FullName $dest -Force
@@ -88,84 +88,125 @@ jobs:
             Write-Host "No src/ patches, skipping."
           }
 
-      # ── BRANDING STEP 2: Global color replacement (Python script from repo) ──
+      # ── PATCH 2: Global color replacement ────────────────────────────────
       - name: Apply Kentstrapper branding - global color replacement
         shell: pwsh
         run: |
           python kentstrapper-patches\scripts\patch_colors.py orcaslicer-source
 
-      # ── BRANDING STEP 3: App icon (PNG sizes + ICO via ImageMagick) ───────
-      - name: Apply Kentstrapper logo
+      # ── PATCH 3: Verify colors were replaced ──────────────────────────────
+      - name: Verify color replacement
         shell: pwsh
         run: |
-          $logo = "kentstrapper-patches\branding\logo.png"
-          if (-not (Test-Path $logo)) {
-            Write-Host "No branding/logo.png, skipping icon replacement."
-            exit 0
+          $buttonCpp = "orcaslicer-source\src\slic3r\GUI\Widgets\Button.cpp"
+          if (Select-String -Path $buttonCpp -Pattern "009688" -Quiet) {
+            Write-Error "FAIL: Button.cpp still contains teal color 009688 after patching!"
+            exit 1
           }
-          Write-Host "Applying Kentstrapper logo..."
-          $imgDir = "orcaslicer-source\resources\images"
+          $orange = (Select-String -Path $buttonCpp -Pattern "FF8800" -AllMatches).Matches.Count
+          Write-Host "OK: Button.cpp has $orange occurrences of Kentstrapper orange #FF8800"
 
-          # Replace PNG icon files
-          $pngTargets = @(
-            "OrcaSlicer.png",
-            "OrcaSlicer_32px.png",
-            "OrcaSlicer_64.png",
-            "OrcaSlicer_128px.png",
-            "OrcaSlicer_192px.png"
-          )
-          foreach ($t in $pngTargets) {
-            $dest = Join-Path $imgDir $t
-            if (Test-Path $dest) {
-              Copy-Item $logo $dest -Force
-              Write-Host "  Replaced PNG: $t"
+      # ── PATCH 4: Replace app icon ──────────────────────────────────────────
+      - name: Apply Kentstrapper icons
+        shell: pwsh
+        run: |
+          $imgDir = "orcaslicer-source\resources\images"
+          Write-Host "Applying Kentstrapper icons..."
+
+          # ICO file (provided directly, no conversion needed)
+          $icoSrc = "kentstrapper-patches\branding\logo.ico"
+          if (Test-Path $icoSrc) {
+            Copy-Item $icoSrc (Join-Path $imgDir "OrcaSlicer.ico") -Force
+            Write-Host "  Replaced: OrcaSlicer.ico"
+          }
+
+          # PNG icons — replace all standard sizes
+          $pngSrc = "kentstrapper-patches\branding\logo.png"
+          if (Test-Path $pngSrc) {
+            foreach ($t in @("OrcaSlicer.png","OrcaSlicer_32px.png","OrcaSlicer_64.png","OrcaSlicer_128px.png","OrcaSlicer_192px.png")) {
+              $dest = Join-Path $imgDir $t
+              if (Test-Path $dest) {
+                Copy-Item $pngSrc $dest -Force
+                Write-Host "  Replaced PNG: $t"
+              }
             }
           }
 
-          # Convert PNG to ICO using ImageMagick (pre-installed on windows-latest)
-          $icoPath = Join-Path $imgDir "OrcaSlicer.ico"
-          if (Get-Command magick -ErrorAction SilentlyContinue) {
-            magick convert $logo -define icon:auto-resize=256,128,64,48,32,16 $icoPath
-            Write-Host "  Created ICO: OrcaSlicer.ico"
-          } else {
-            Write-Host "  ImageMagick not found, skipping ICO conversion."
+          # Large PNG (1024px) — for any high-res use
+          $pngLarge = "kentstrapper-patches\branding\logo_1024.png"
+          if (Test-Path $pngLarge) {
+            Copy-Item $pngLarge (Join-Path $imgDir "OrcaSlicer_1024.png") -Force
+            Write-Host "  Added: OrcaSlicer_1024.png"
           }
 
-      # ── BRANDING STEP 4: Splash screen ────────────────────────────────────
-      - name: Apply Kentstrapper splash background
+      # ── PATCH 5: Replace splash screen ────────────────────────────────────
+      - name: Apply Kentstrapper splash screen
         shell: pwsh
         run: |
-          $bg = "kentstrapper-patches\branding\background.png"
-          if (-not (Test-Path $bg)) {
-            Write-Host "No branding/background.png, skipping splash replacement."
-            exit 0
-          }
-          Write-Host "Applying Kentstrapper splash background..."
+          $bg     = "kentstrapper-patches\branding\background.png"
           $imgDir = "orcaslicer-source\resources\images"
 
-          # OrcaSlicer v2.3.2 actual splash filenames
-          $splashTargets = @(
-            "OrcaSlicer_154.png",
-            "OrcaSlicer_154_title.png",
-            "Splash.png",
-            "splash.png",
-            "OrcaSlicer-splash.png"
-          )
+          if (-not (Test-Path $bg)) {
+            Write-Host "No background.png found, skipping."
+            exit 0
+          }
+
+          Write-Host "Applying Kentstrapper splash screen..."
           $replaced = 0
-          foreach ($t in $splashTargets) {
+
+          # Find ALL PNG files whose name contains "154" or "splash" or "Splash"
+          Get-ChildItem $imgDir -Filter "*.png" | Where-Object {
+            $_.Name -match "154|[Ss]plash"
+          } | ForEach-Object {
+            Copy-Item $bg $_.FullName -Force
+            Write-Host "  Replaced: $($_.Name)"
+            $replaced++
+          }
+
+          # Also try fixed known names as fallback
+          foreach ($t in @("OrcaSlicer_154.png","OrcaSlicer_154_title.png","Splash.png","splash.png")) {
             $dest = Join-Path $imgDir $t
-            if (Test-Path $dest) {
+            if ((Test-Path $dest) -and $replaced -eq 0) {
               Copy-Item $bg $dest -Force
-              Write-Host "  Replaced splash: $t"
+              Write-Host "  Replaced (fallback): $t"
               $replaced++
             }
           }
+
           if ($replaced -eq 0) {
-            Write-Host "  WARNING: no splash file found among targets"
-            Get-ChildItem $imgDir -Filter "*.png" | Where-Object { $_.Name -match "splash|Splash|154" } | ForEach-Object { Write-Host "  Found: $($_.Name)" }
+            Write-Warning "No splash file found! Listing all PNGs in resources/images:"
+            Get-ChildItem $imgDir -Filter "*.png" | Select-Object Name | Format-Table
+          } else {
+            Write-Host "Splash replacement: $replaced file(s) replaced."
           }
 
-      # ── BRANDING STEP 5: Pre-installed profiles ───────────────────────────
+      # ── PATCH 6: Installer branding text ──────────────────────────────────
+      - name: Patch installer branding text
+        shell: pwsh
+        run: |
+          Write-Host "Patching installer display name and branding..."
+
+          # Patch CMakeLists.txt - change installer description
+          $cmake = "orcaslicer-source\CMakeLists.txt"
+          if (Test-Path $cmake) {
+            $c = Get-Content $cmake -Raw
+            $c = $c -replace 'set\(CPACK_PACKAGE_DESCRIPTION_SUMMARY\s+"[^"]*"\)', 'set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "OrcaSlicer branded version by Kentstrapper")'
+            $c = $c -replace 'set\(CPACK_NSIS_PACKAGE_NAME\s+"[^"]*"\)', 'set(CPACK_NSIS_PACKAGE_NAME "OrcaSlicer branded by Kentstrapper")'
+            Set-Content $cmake $c
+            Write-Host "  Patched CMakeLists.txt"
+          }
+
+          # Patch NSIS script template directly
+          $nsiFiles = Get-ChildItem "orcaslicer-source" -Recurse -Filter "*.nsi"
+          foreach ($nsi in $nsiFiles) {
+            $c = Get-Content $nsi.FullName -Raw
+            $c = $c -replace 'Name "OrcaSlicer"', 'Name "OrcaSlicer branded by Kentstrapper"'
+            $c = $c -replace '!define PRODUCT_NAME "OrcaSlicer"', '!define PRODUCT_NAME "OrcaSlicer branded by Kentstrapper"'
+            Set-Content $nsi.FullName $c
+            Write-Host "  Patched NSI: $($nsi.Name)"
+          }
+
+      # ── PATCH 7: Pre-installed profiles ───────────────────────────────────
       - name: Include Kentstrapper profiles
         shell: pwsh
         run: |
@@ -189,7 +230,7 @@ jobs:
             $inject = "`n$line1`n$line2`n$line3`n"
             $nsiContent = $nsiContent -replace '(?m)(SectionEnd[ \t]*)$', "$inject`n`$1"
             Set-Content $nsisScript.FullName $nsiContent
-            Write-Host "  NSIS script patched: $($nsisScript.FullName)"
+            Write-Host "  NSIS profiles injection patched."
           }
 
       # ── BUILD ─────────────────────────────────────────────────────────────
@@ -242,17 +283,17 @@ jobs:
           tag_name: kentstrapper-${{ env.ver }}-${{ env.date }}
           name: "Kentstrapper OrcaSlicer ${{ env.ver }} (${{ env.date }})"
           body: |
-            ## Kentstrapper OrcaSlicer ${{ env.ver }} - Windows Build
+            ## OrcaSlicer branded version by Kentstrapper — ${{ env.ver }}
 
             OrcaSlicer **v2.3.2 stabile** rebranded con i colori aziendali Kentstrapper.
 
             ### Download
-            - **Installer** (`.exe`) - consigliato, include profili pre-installati
-            - **Portable** (`.zip`) - nessuna installazione, decomprimi e avvia
+            - **Installer** (`.exe`) — consigliato, include profili pre-installati
+            - **Portable** (`.zip`) — nessuna installazione, decomprimi e avvia
 
-            ### Modifiche
-            - Colore accent: teal -> arancione Kentstrapper #FF8800 (tutti i file src/ e resources/)
-            - Logo e splash screen Kentstrapper
+            ### Incluso
+            - Colori arancione Kentstrapper #FF8800 in tutta la UI
+            - Icona e splash screen Kentstrapper
             - Profili filament/machine/process pre-installati
           draft: false
           prerelease: false
