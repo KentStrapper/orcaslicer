@@ -94,6 +94,12 @@ jobs:
         run: |
           python kentstrapper-patches\scripts\patch_colors.py orcaslicer-source
 
+      # ── PATCH 2b: Patch splash screen in GUI_App.cpp ──────────────────────
+      - name: Patch splash screen (GUI_App.cpp)
+        shell: pwsh
+        run: |
+          python kentstrapper-patches\scripts\patch_splash.py orcaslicer-source
+
       # ── PATCH 3: Verify colors were replaced ──────────────────────────────
       - name: Verify color replacement
         shell: pwsh
@@ -113,17 +119,18 @@ jobs:
           $imgDir = "orcaslicer-source\resources\images"
           Write-Host "Applying Kentstrapper icons..."
 
-          # ICO file (provided directly, no conversion needed)
+          # ICO file (already correct format — use directly)
           $icoSrc = "kentstrapper-patches\branding\logo.ico"
           if (Test-Path $icoSrc) {
             Copy-Item $icoSrc (Join-Path $imgDir "OrcaSlicer.ico") -Force
-            Write-Host "  Replaced: OrcaSlicer.ico"
+            Copy-Item $icoSrc (Join-Path $imgDir "OrcaSlicerTitle.ico") -Force
+            Write-Host "  Replaced: OrcaSlicer.ico + OrcaSlicerTitle.ico"
           }
 
-          # PNG icons — replace all standard sizes
+          # PNG icons — all standard sizes
           $pngSrc = "kentstrapper-patches\branding\logo.png"
           if (Test-Path $pngSrc) {
-            foreach ($t in @("OrcaSlicer.png","OrcaSlicer_32px.png","OrcaSlicer_64.png","OrcaSlicer_128px.png","OrcaSlicer_192px.png")) {
+            foreach ($t in @("OrcaSlicer.png","OrcaSlicer_32px.png","OrcaSlicer_64.png","OrcaSlicer_128px.png","OrcaSlicer_192px.png","OrcaSlicerTitle.png")) {
               $dest = Join-Path $imgDir $t
               if (Test-Path $dest) {
                 Copy-Item $pngSrc $dest -Force
@@ -132,7 +139,7 @@ jobs:
             }
           }
 
-          # Large PNG (1024px) — for any high-res use
+          # High-res 1024px icon
           $pngLarge = "kentstrapper-patches\branding\logo_1024.png"
           if (Test-Path $pngLarge) {
             Copy-Item $pngLarge (Join-Path $imgDir "OrcaSlicer_1024.png") -Force
@@ -152,32 +159,18 @@ jobs:
           }
 
           Write-Host "Applying Kentstrapper splash screen..."
-          $replaced = 0
 
-          # Find ALL PNG files whose name contains "154" or "splash" or "Splash"
-          Get-ChildItem $imgDir -Filter "*.png" | Where-Object {
-            $_.Name -match "154|[Ss]plash"
-          } | ForEach-Object {
-            Copy-Item $bg $_.FullName -Force
-            Write-Host "  Replaced: $($_.Name)"
-            $replaced++
-          }
+          # Our patched GUI_App.cpp loads OrcaSlicer_154.png as the splash background
+          # Replace it with the Kentstrapper custom image
+          $dest = Join-Path $imgDir "OrcaSlicer_154.png"
+          Copy-Item $bg $dest -Force
+          Write-Host "  Replaced: OrcaSlicer_154.png (loaded by patched GUI_App.cpp)"
 
-          # Also try fixed known names as fallback
-          foreach ($t in @("OrcaSlicer_154.png","OrcaSlicer_154_title.png","Splash.png","splash.png")) {
-            $dest = Join-Path $imgDir $t
-            if ((Test-Path $dest) -and $replaced -eq 0) {
-              Copy-Item $bg $dest -Force
-              Write-Host "  Replaced (fallback): $t"
-              $replaced++
-            }
-          }
-
-          if ($replaced -eq 0) {
-            Write-Warning "No splash file found! Listing all PNGs in resources/images:"
-            Get-ChildItem $imgDir -Filter "*.png" | Select-Object Name | Format-Table
-          } else {
-            Write-Host "Splash replacement: $replaced file(s) replaced."
+          # Also replace the title variant
+          $dest2 = Join-Path $imgDir "OrcaSlicer_154_title.png"
+          if (Test-Path $dest2) {
+            Copy-Item $bg $dest2 -Force
+            Write-Host "  Replaced: OrcaSlicer_154_title.png"
           }
 
       # ── PATCH 6: Installer branding text ──────────────────────────────────
