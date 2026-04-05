@@ -100,51 +100,49 @@ jobs:
         run: |
           python kentstrapper-patches\scripts\patch_splash.py orcaslicer-source
 
-      # ── PATCH 3: Verify colors were replaced ──────────────────────────────
+      # ── PATCH 3: Verify colors + full teal scan ───────────────────────────
       - name: Verify color replacement
         shell: pwsh
         run: |
           $failed = $false
+          $tealPatterns = @("009688","BFE1DE","26A69A","52c7b8","52C7B8","0, 150, 136","E5F0EE","bfe1de")
 
-          # Button.cpp — manually patched, must have no teal
-          $buttonCpp = "orcaslicer-source\src\slic3r\GUI\Widgets\Button.cpp"
-          if (Select-String -Path $buttonCpp -Pattern "009688" -Quiet) {
-            Write-Host "FAIL: Button.cpp still contains teal 009688!"
+          function Check-File($path, $label) {
+            if (-not (Test-Path $path)) {
+              Write-Host "WARNING: $label not found at $path"
+              return
+            }
+            $content = Get-Content $path -Raw
+            $hasTeal = $false
+            foreach ($p in $tealPatterns) {
+              if ($content -match [regex]::Escape($p)) {
+                Write-Host "  TEAL '$p' found in $label"
+                $hasTeal = $true
+                $script:failed = $true
+              }
+            }
+            if (-not $hasTeal) {
+              Write-Host "OK: $label — no teal colors"
+            }
+          }
+
+          Check-File "orcaslicer-source\src\slic3r\GUI\Widgets\Button.cpp"  "Button.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\TabButton.cpp"        "TabButton.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\Tabbook.cpp"          "Tabbook.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\Plater.cpp"           "Plater.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\MainFrame.cpp"        "MainFrame.cpp"
+
+          # Broad scan: find ANY remaining teal in all cpp/hpp files
+          Write-Host "`n=== Full scan for remaining teal in src/ ==="
+          $remaining = Get-ChildItem "orcaslicer-source\src" -Recurse -Include "*.cpp","*.hpp","*.h" |
+            Select-String -Pattern "009688|BFE1DE|52c7b8|0, 150, 136" -CaseSensitive:$false |
+            Select-Object -First 30
+          if ($remaining) {
+            Write-Host "REMAINING TEAL occurrences (first 30):"
+            $remaining | ForEach-Object { Write-Host "  $($_.Filename):$($_.LineNumber): $($_.Line.Trim())" }
             $failed = $true
           } else {
-            $n = (Select-String -Path $buttonCpp -Pattern "FF8800" -AllMatches).Matches.Count
-            Write-Host "OK: Button.cpp — $n x #FF8800 (no teal)"
-          }
-
-          # Tabbook.cpp — patched by Python script, must have no #BFE1DE
-          $tabbook = "orcaslicer-source\src\slic3r\GUI\Tabbook.cpp"
-          if (-not (Test-Path $tabbook)) {
-            $tabbook = (Get-ChildItem "orcaslicer-source\src" -Recurse -Filter "Tabbook.cpp" | Select-Object -First 1 -ExpandProperty FullName)
-          }
-          if ($tabbook -and (Test-Path $tabbook)) {
-            if (Select-String -Path $tabbook -Pattern "BFE1DE" -Quiet) {
-              Write-Host "FAIL: Tabbook.cpp still contains teal #BFE1DE — Python patch did NOT work!"
-              $failed = $true
-            } else {
-              $n = (Select-String -Path $tabbook -Pattern "FFE0B2" -AllMatches).Matches.Count
-              Write-Host "OK: Tabbook.cpp — $n x #FFE0B2 (no teal)"
-            }
-          } else {
-            Write-Host "WARNING: Tabbook.cpp not found"
-          }
-
-          # Plater.cpp — patched by Python script, must have no 009688
-          $plater = "orcaslicer-source\src\slic3r\GUI\Plater.cpp"
-          if (Test-Path $plater) {
-            $teal = (Select-String -Path $plater -Pattern "009688" -AllMatches).Matches.Count
-            if ($teal -gt 0) {
-              Write-Host "FAIL: Plater.cpp still has $teal occurrences of teal 009688!"
-              $failed = $true
-            } else {
-              Write-Host "OK: Plater.cpp — no teal 009688"
-            }
-          } else {
-            Write-Host "WARNING: Plater.cpp not found"
+            Write-Host "No remaining teal found in src/ cpp/hpp files."
           }
 
           if ($failed) { exit 1 }
@@ -296,16 +294,29 @@ jobs:
           if (-not (Test-Path $ico)) {
             Write-Host "WARNING: logo.ico not found, skipping EXE icon patch."
           } else {
-            # Find the main OrcaSlicer executable (not the installer)
-            $exes = Get-ChildItem "orcaslicer-source\build\OrcaSlicer" -Filter "*.exe" -ErrorAction SilentlyContinue
-            if (-not $exes) {
-              $exes = Get-ChildItem "orcaslicer-source\build" -Recurse -Filter "orca-slicer.exe" -ErrorAction SilentlyContinue
+            # List build directory contents for diagnostics
+            Write-Host "Build directory contents:"
+            Get-ChildItem "orcaslicer-source\build" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name)" }
+
+            # Find orca-slicer.exe specifically (the main app exe, not installer)
+            $exe = Get-ChildItem "orcaslicer-source\build" -Recurse -Filter "orca-slicer.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $exe) {
+              # Try alternate naming
+              $exe = Get-ChildItem "orcaslicer-source\build\OrcaSlicer" -Filter "*.exe" -ErrorAction SilentlyContinue |
+                     Where-Object { $_.Name -notlike "*install*" -and $_.Name -notlike "NSIS*" } |
+                     Select-Object -First 1
             }
-            foreach ($exe in $exes) {
-              Write-Host "Patching icon: $($exe.FullName)"
-              .\rcedit.exe "$($exe.FullName)" --set-icon $ico
+            if ($exe) {
+              Write-Host "Patching EXE icon: $($exe.FullName)"
+              $result = & .\rcedit.exe "$($exe.FullName)" --set-icon "$ico" 2>&1
+              Write-Host "rcedit output: $result"
+              Write-Host "EXE icon patch done."
+            } else {
+              Write-Host "ERROR: Could not find orca-slicer.exe — icon NOT patched"
+              Write-Host "All EXEs in build:"
+              Get-ChildItem "orcaslicer-source\build" -Recurse -Filter "*.exe" -ErrorAction SilentlyContinue |
+                ForEach-Object { Write-Host "  $($_.FullName)" }
             }
-            Write-Host "EXE icon patch done."
           }
 
       - name: Create installer
