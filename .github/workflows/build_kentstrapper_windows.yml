@@ -104,13 +104,50 @@ jobs:
       - name: Verify color replacement
         shell: pwsh
         run: |
+          $failed = $false
+
+          # Button.cpp — manually patched, must have no teal
           $buttonCpp = "orcaslicer-source\src\slic3r\GUI\Widgets\Button.cpp"
           if (Select-String -Path $buttonCpp -Pattern "009688" -Quiet) {
-            Write-Error "FAIL: Button.cpp still contains teal color 009688 after patching!"
-            exit 1
+            Write-Host "FAIL: Button.cpp still contains teal 009688!"
+            $failed = $true
+          } else {
+            $n = (Select-String -Path $buttonCpp -Pattern "FF8800" -AllMatches).Matches.Count
+            Write-Host "OK: Button.cpp — $n x #FF8800 (no teal)"
           }
-          $orange = (Select-String -Path $buttonCpp -Pattern "FF8800" -AllMatches).Matches.Count
-          Write-Host "OK: Button.cpp has $orange occurrences of Kentstrapper orange #FF8800"
+
+          # Tabbook.cpp — patched by Python script, must have no #BFE1DE
+          $tabbook = "orcaslicer-source\src\slic3r\GUI\Tabbook.cpp"
+          if (-not (Test-Path $tabbook)) {
+            $tabbook = (Get-ChildItem "orcaslicer-source\src" -Recurse -Filter "Tabbook.cpp" | Select-Object -First 1 -ExpandProperty FullName)
+          }
+          if ($tabbook -and (Test-Path $tabbook)) {
+            if (Select-String -Path $tabbook -Pattern "BFE1DE" -Quiet) {
+              Write-Host "FAIL: Tabbook.cpp still contains teal #BFE1DE — Python patch did NOT work!"
+              $failed = $true
+            } else {
+              $n = (Select-String -Path $tabbook -Pattern "FFE0B2" -AllMatches).Matches.Count
+              Write-Host "OK: Tabbook.cpp — $n x #FFE0B2 (no teal)"
+            }
+          } else {
+            Write-Host "WARNING: Tabbook.cpp not found"
+          }
+
+          # Plater.cpp — patched by Python script, must have no 009688
+          $plater = "orcaslicer-source\src\slic3r\GUI\Plater.cpp"
+          if (Test-Path $plater) {
+            $teal = (Select-String -Path $plater -Pattern "009688" -AllMatches).Matches.Count
+            if ($teal -gt 0) {
+              Write-Host "FAIL: Plater.cpp still has $teal occurrences of teal 009688!"
+              $failed = $true
+            } else {
+              Write-Host "OK: Plater.cpp — no teal 009688"
+            }
+          } else {
+            Write-Host "WARNING: Plater.cpp not found"
+          }
+
+          if ($failed) { exit 1 }
 
       # ── PATCH 4: Replace app icon ──────────────────────────────────────────
       - name: Apply Kentstrapper icons
@@ -247,6 +284,29 @@ jobs:
           WindowsSdkDir: 'C:\Program Files (x86)\Windows Kits\10\'
           WindowsSDKVersion: '10.0.26100.0\'
         run: .\build_release_vs.bat slicer
+
+      # ── PATCH 8: Patch EXE icon (desktop shortcut icon) ──────────────────
+      - name: Patch EXE icon with rcedit
+        shell: pwsh
+        run: |
+          Write-Host "Downloading rcedit..."
+          Invoke-WebRequest -Uri "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe" -OutFile "rcedit.exe"
+
+          $ico = "kentstrapper-patches\branding\logo.ico"
+          if (-not (Test-Path $ico)) {
+            Write-Host "WARNING: logo.ico not found, skipping EXE icon patch."
+          } else {
+            # Find the main OrcaSlicer executable (not the installer)
+            $exes = Get-ChildItem "orcaslicer-source\build\OrcaSlicer" -Filter "*.exe" -ErrorAction SilentlyContinue
+            if (-not $exes) {
+              $exes = Get-ChildItem "orcaslicer-source\build" -Recurse -Filter "orca-slicer.exe" -ErrorAction SilentlyContinue
+            }
+            foreach ($exe in $exes) {
+              Write-Host "Patching icon: $($exe.FullName)"
+              .\rcedit.exe "$($exe.FullName)" --set-icon $ico
+            }
+            Write-Host "EXE icon patch done."
+          }
 
       - name: Create installer
         working-directory: orcaslicer-source/build
