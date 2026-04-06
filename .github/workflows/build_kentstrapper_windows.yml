@@ -272,9 +272,11 @@ jobs:
         run: |
           $v = Get-Content version.inc -Raw
           if ($v -match 'set\(SoftFever_VERSION "(.*?)"\)') { $ver = $matches[1] }
-          $ver = "V$ver-Kentstrapper"
+          $sha = "${{ github.sha }}".Substring(0, 7)
+          $ver = "V$ver-Kentstrapper-$sha"
           echo "ver=$ver" >> $env:GITHUB_ENV
-          echo "date=$(Get-Date -Format 'yyyyMMdd')" >> $env:GITHUB_ENV
+          echo "sha_short=$sha" >> $env:GITHUB_ENV
+          echo "date=$(Get-Date -Format 'yyyyMMdd-HHmm')" >> $env:GITHUB_ENV
 
       - name: Build OrcaSlicer
         working-directory: orcaslicer-source
