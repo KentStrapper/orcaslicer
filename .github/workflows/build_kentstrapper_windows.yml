@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - main-slim
     paths:
       - 'src/**'
       - 'scripts/**'
