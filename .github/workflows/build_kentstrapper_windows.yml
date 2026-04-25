@@ -253,17 +253,10 @@ jobs:
           Copy-Item "$profilesSrc\*" $dest -Recurse -Force
           Write-Host "  Profiles staged at: $dest"
 
-          $nsisScript = Get-ChildItem -Path "orcaslicer-source" -Recurse -Filter "*.nsi" | Select-Object -First 1
-          if ($nsisScript) {
-            $nsiContent = Get-Content $nsisScript.FullName -Raw
-            $line1 = '              ; Kentstrapper pre-installed profiles'
-            $line2 = '              SetOutPath "$APPDATA\OrcaSlicer\user\default"'
-            $line3 = '              File /r "${RESOURCEDIR}\kentstrapper_profiles\*"'
-            $inject = "`n$line1`n$line2`n$line3`n"
-            $nsiContent = $nsiContent -replace '(?m)(SectionEnd[ \t]*)$', "$inject`n`$1"
-            Set-Content $nsisScript.FullName $nsiContent
-            Write-Host "  NSIS profiles injection patched."
-          }
+          # Profiles are staged in resources/kentstrapper_profiles/ and will be
+          # included in the installer's resources bundle automatically via the
+          # normal OrcaSlicer CPack packaging (no NSIS injection needed).
+          Write-Host "  Profiles will be included in resources bundle."
 
       # ── BUILD ─────────────────────────────────────────────────────────────
       - name: Install NSIS
