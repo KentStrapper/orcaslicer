@@ -70,9 +70,10 @@ REPLACEMENTS = [
     ("#DBFDD5", "#FFE8CC"),
     ("DBFDD5",  "FFE8CC"),
 
-    # RGB decimal format: wxColour(0, 150, 136)
+    # RGB decimal format: wxColour(0, 150, 136) — all spacing variants
     ("0, 150, 136",  "255, 136, 0"),
     ("0,150,136",    "255,136,0"),
+    ("0,150, 136",   "255,136, 0"),   # mixed spacing variant (Notebook.cpp SetSelection)
     ("0, 150, 136,", "255, 136, 0,"),   # with trailing comma
 
     # Additional teal/green shades found in MainFrame.cpp, AmsWidgets, etc.
@@ -80,6 +81,9 @@ REPLACEMENTS = [
     ("0,137,123",    "200,110,0"),
     ("48, 221, 112", "255, 170, 0"),
     ("48,221,112",   "255,170,0"),
+    # #26A69A = wxColour(38, 166, 154) — hover teal in SideButton.cpp
+    ("38, 166, 154", "204, 110, 0"),
+    ("38,166,154",   "204,110,0"),
     ("#00897B", "#CC6E00"),
     ("#00897b", "#cc6e00"),
     ("00897B",  "CC6E00"),

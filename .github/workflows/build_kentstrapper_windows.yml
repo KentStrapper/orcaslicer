@@ -127,16 +127,19 @@ jobs:
             }
           }
 
-          Check-File "orcaslicer-source\src\slic3r\GUI\Widgets\Button.cpp"  "Button.cpp"
-          Check-File "orcaslicer-source\src\slic3r\GUI\TabButton.cpp"        "TabButton.cpp"
-          Check-File "orcaslicer-source\src\slic3r\GUI\Tabbook.cpp"          "Tabbook.cpp"
-          Check-File "orcaslicer-source\src\slic3r\GUI\Plater.cpp"           "Plater.cpp"
-          Check-File "orcaslicer-source\src\slic3r\GUI\MainFrame.cpp"        "MainFrame.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\Widgets\Button.cpp"      "Button.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\Widgets\SideButton.cpp" "SideButton.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\TabButton.cpp"          "TabButton.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\Tabbook.cpp"            "Tabbook.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\Notebook.cpp"           "Notebook.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\Plater.cpp"             "Plater.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\MainFrame.cpp"          "MainFrame.cpp"
 
           # Broad scan: find ANY remaining teal in all cpp/hpp files
+          # Note: 38, 166, 154 = #26A69A decimal; 0,150, 136 = mixed-space variant
           Write-Host "`n=== Full scan for remaining teal in src/ ==="
           $remaining = Get-ChildItem "orcaslicer-source\src" -Recurse -Include "*.cpp","*.hpp","*.h" |
-            Select-String -Pattern "009688|BFE1DE|52c7b8|0, 150, 136" -CaseSensitive:$false |
+            Select-String -Pattern "009688|BFE1DE|52c7b8|0, 150, 136|0,150, 136|38, 166, 154" -CaseSensitive:$false |
             Select-Object -First 30
           if ($remaining) {
             Write-Host "REMAINING TEAL occurrences (first 30):"
