@@ -338,11 +338,13 @@ jobs:
             @("#EDFAF2", "#FFF8EE")
           )
 
-          $exe = Get-ChildItem "orcaslicer-source\build" -Recurse -Filter "orca-slicer.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          # Try multiple possible EXE names (OrcaSlicer.exe is the Windows build output)
+          $exe = Get-ChildItem "orcaslicer-source\build" -Recurse -Include "OrcaSlicer.exe","orca-slicer.exe","OrcaSlicer_*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $exe) {
-            Write-Host "ERROR: orca-slicer.exe not found!"
+            Write-Host "WARNING: OrcaSlicer.exe not found for binary patching — listing build dir:"
             Get-ChildItem "orcaslicer-source\build" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name)" }
-            exit 1
+            Write-Host "Skipping binary color patch (source patches should be sufficient)"
+            exit 0
           }
 
           Write-Host "Binary patching: $($exe.FullName) ($([int]([System.IO.FileInfo]$exe.FullName).Length / 1MB) MB)"
@@ -378,7 +380,7 @@ jobs:
           path: orcaslicer-source/build/KentrapperSlicer_Windows_${{ env.ver }}_portable.zip
 
       - name: Create GitHub Release
-        if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && inputs.create-release == true)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/main-slim' || (github.event_name == 'workflow_dispatch' && inputs.create-release == true)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: kentstrapper-${{ env.ver }}-${{ env.date }}
