@@ -127,19 +127,16 @@ jobs:
             }
           }
 
-          Check-File "orcaslicer-source\src\slic3r\GUI\Widgets\Button.cpp"      "Button.cpp"
-          Check-File "orcaslicer-source\src\slic3r\GUI\Widgets\SideButton.cpp" "SideButton.cpp"
-          Check-File "orcaslicer-source\src\slic3r\GUI\TabButton.cpp"          "TabButton.cpp"
-          Check-File "orcaslicer-source\src\slic3r\GUI\Tabbook.cpp"            "Tabbook.cpp"
-          Check-File "orcaslicer-source\src\slic3r\GUI\Notebook.cpp"           "Notebook.cpp"
-          Check-File "orcaslicer-source\src\slic3r\GUI\Plater.cpp"             "Plater.cpp"
-          Check-File "orcaslicer-source\src\slic3r\GUI\MainFrame.cpp"          "MainFrame.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\Widgets\Button.cpp"  "Button.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\TabButton.cpp"        "TabButton.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\Tabbook.cpp"          "Tabbook.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\Plater.cpp"           "Plater.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\MainFrame.cpp"        "MainFrame.cpp"
 
           # Broad scan: find ANY remaining teal in all cpp/hpp files
-          # Note: 38, 166, 154 = #26A69A decimal; 0,150, 136 = mixed-space variant
           Write-Host "`n=== Full scan for remaining teal in src/ ==="
           $remaining = Get-ChildItem "orcaslicer-source\src" -Recurse -Include "*.cpp","*.hpp","*.h" |
-            Select-String -Pattern "009688|BFE1DE|52c7b8|0, 150, 136|0,150, 136|38, 166, 154" -CaseSensitive:$false |
+            Select-String -Pattern "009688|BFE1DE|52c7b8|0, 150, 136" -CaseSensitive:$false |
             Select-Object -First 30
           if ($remaining) {
             Write-Host "REMAINING TEAL occurrences (first 30):"
@@ -149,11 +146,7 @@ jobs:
             Write-Host "No remaining teal found in src/ cpp/hpp files."
           }
 
-          if ($failed) {
-            Write-Host "WARNING: teal colors found above — binary patch (PATCH 8) will clean up after compilation"
-          } else {
-            Write-Host "All color checks passed."
-          }
+          if ($failed) { exit 1 }
 
       # ── PATCH 4: Replace app icon ──────────────────────────────────────────
       - name: Apply Kentstrapper icons
@@ -232,9 +225,15 @@ jobs:
             Write-Host "  Patched CMakeLists.txt"
           }
 
-          # NSI template patching skipped — any modification risks corrupting
-          # the NSIS script and causing CPack to fail.
-          Write-Host "  NSI template kept as-is (branding via CMakeLists.txt only)"
+          # Patch NSIS script template directly
+          $nsiFiles = Get-ChildItem "orcaslicer-source" -Recurse -Filter "*.nsi"
+          foreach ($nsi in $nsiFiles) {
+            $c = Get-Content $nsi.FullName -Raw
+            $c = $c -replace 'Name "OrcaSlicer"', 'Name "OrcaSlicer branded by Kentstrapper"'
+            $c = $c -replace '!define PRODUCT_NAME "OrcaSlicer"', '!define PRODUCT_NAME "OrcaSlicer branded by Kentstrapper"'
+            Set-Content $nsi.FullName $c
+            Write-Host "  Patched NSI: $($nsi.Name)"
+          }
 
       # ── PATCH 7: Pre-installed profiles ───────────────────────────────────
       - name: Include Kentstrapper profiles
@@ -251,10 +250,17 @@ jobs:
           Copy-Item "$profilesSrc\*" $dest -Recurse -Force
           Write-Host "  Profiles staged at: $dest"
 
-          # Profiles are staged in resources/kentstrapper_profiles/ and will be
-          # included in the installer's resources bundle automatically via the
-          # normal OrcaSlicer CPack packaging (no NSIS injection needed).
-          Write-Host "  Profiles will be included in resources bundle."
+          $nsisScript = Get-ChildItem -Path "orcaslicer-source" -Recurse -Filter "*.nsi" | Select-Object -First 1
+          if ($nsisScript) {
+            $nsiContent = Get-Content $nsisScript.FullName -Raw
+            $line1 = '              ; Kentstrapper pre-installed profiles'
+            $line2 = '              SetOutPath "$APPDATA\OrcaSlicer\user\default"'
+            $line3 = '              File /r "${RESOURCEDIR}\kentstrapper_profiles\*"'
+            $inject = "`n$line1`n$line2`n$line3`n"
+            $nsiContent = $nsiContent -replace '(?m)(SectionEnd[ \t]*)$', "$inject`n`$1"
+            Set-Content $nsisScript.FullName $nsiContent
+            Write-Host "  NSIS profiles injection patched."
+          }
 
       # ── BUILD ─────────────────────────────────────────────────────────────
       - name: Install NSIS
@@ -329,13 +335,11 @@ jobs:
             @("#EDFAF2", "#FFF8EE")
           )
 
-          # Try multiple possible EXE names (OrcaSlicer.exe is the Windows build output)
-          $exe = Get-ChildItem "orcaslicer-source\build" -Recurse -Include "OrcaSlicer.exe","orca-slicer.exe","OrcaSlicer_*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          $exe = Get-ChildItem "orcaslicer-source\build" -Recurse -Filter "orca-slicer.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $exe) {
-            Write-Host "WARNING: OrcaSlicer.exe not found for binary patching — listing build dir:"
+            Write-Host "ERROR: orca-slicer.exe not found!"
             Get-ChildItem "orcaslicer-source\build" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name)" }
-            Write-Host "Skipping binary color patch (source patches should be sufficient)"
-            exit 0
+            exit 1
           }
 
           Write-Host "Binary patching: $($exe.FullName) ($([int]([System.IO.FileInfo]$exe.FullName).Length / 1MB) MB)"
