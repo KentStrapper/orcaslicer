@@ -215,12 +215,14 @@ jobs:
         run: |
           Write-Host "Patching installer display name and branding..."
 
-          # Patch CMakeLists.txt - change installer description
+          # Patch CMakeLists.txt - change installer description and install dir
           $cmake = "orcaslicer-source\CMakeLists.txt"
           if (Test-Path $cmake) {
             $c = Get-Content $cmake -Raw
             $c = $c -replace 'set\(CPACK_PACKAGE_DESCRIPTION_SUMMARY\s+"[^"]*"\)', 'set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "OrcaSlicer branded version by Kentstrapper")'
             $c = $c -replace 'set\(CPACK_NSIS_PACKAGE_NAME\s+"[^"]*"\)', 'set(CPACK_NSIS_PACKAGE_NAME "OrcaSlicer branded by Kentstrapper")'
+            # Install to KentrapperSlicer folder to avoid DLL conflicts with official OrcaSlicer
+            $c = $c -replace 'set\(CPACK_PACKAGE_INSTALL_DIRECTORY\s+"[^"]*"\)', 'set(CPACK_PACKAGE_INSTALL_DIRECTORY "KentrapperSlicer")'
             Set-Content $cmake $c
             Write-Host "  Patched CMakeLists.txt"
           }
