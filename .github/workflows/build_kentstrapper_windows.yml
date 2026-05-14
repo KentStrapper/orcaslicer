@@ -4,10 +4,14 @@ on:
   push:
     branches:
       - main
+      - main-slim
+      - claude/fork-orcaslicer-gzXqz
     paths:
       - 'src/**'
+      - 'scripts/**'
       - 'branding/**'
       - 'profiles/**'
+      - 'desktop-folders/**'
       - '.github/workflows/build_kentstrapper_windows.yml'
 
   workflow_dispatch:
@@ -67,136 +71,200 @@ jobs:
         working-directory: orcaslicer-source
         run: .\build_release_vs.bat deps
 
+      # ── PATCH 1: Copy patched C++ source files ────────────────────────────
+      - name: Apply Kentstrapper patched source files
+        shell: pwsh
+        run: |
+          $srcDir = "kentstrapper-patches\src"
+          if (Test-Path $srcDir) {
+            Write-Host "Copying patched source files..."
+            $files = Get-ChildItem -Path $srcDir -Recurse -File
+            foreach ($f in $files) {
+              $rel     = $f.FullName.Substring((Resolve-Path $srcDir).Path.Length + 1)
+              $dest    = Join-Path "orcaslicer-source\src" $rel
+              $destDir = Split-Path $dest -Parent
+              New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+              Copy-Item $f.FullName $dest -Force
+              Write-Host "  -> src\$rel"
+            }
+          } else {
+            Write-Host "No src/ patches, skipping."
+          }
+
+      # ── PATCH 2: Global color replacement ────────────────────────────────
       - name: Apply Kentstrapper branding - global color replacement
         shell: pwsh
         run: |
-          $script = @"
-          import os
+          python kentstrapper-patches\scripts\patch_colors.py orcaslicer-source
 
-          replacements = [
-              ('#009688', '#FF8800'), ('#009688'.lower(), '#ff8800'),
-              ('009688', 'FF8800'), ('0x009688', '0xFF8800'),
-              ('#26A69A', '#CC6E00'), ('#26a69a', '#cc6e00'),
-              ('26A69A', 'CC6E00'), ('26a69a', 'cc6e00'),
-              ('0x26A69A', '0xCC6E00'),
-              ('0x52c7b8', '0xFFAA33'), ('52c7b8', 'FFAA33'), ('52C7B8', 'FFAA33'),
-              ('#00675b', '#CC6E00'), ('#00675B', '#CC6E00'),
-              ('00675b', 'CC6E00'), ('00675B', 'CC6E00'),
-              ('22bfb0', 'FF9933'), ('22BFB0', 'FF9933'), ('00FFD4', 'FFAA44'),
-              ('BFE1DE', 'FFE0B2'), ('bfe1de', 'ffe0b2'),
-              ('E5F0EE', 'FFF3E0'), ('e5f0ee', 'fff3e0'),
-              ('EDFAF2', 'FFF8EE'), ('edfaf2', 'fff8ee'),
-              ('EBF9F0', 'FFF8EE'), ('ebf9f0', 'fff8ee'),
-              ('D7E8DE', 'FFE8CC'), ('d7e8de', 'ffe8cc'),
-              ('DBFDD5', 'FFE8CC'),
-              ('0, 150, 136', '255, 136, 0'), ('0,150,136', '255,136,0'),
-          ]
-
-          exts = {'.cpp', '.hpp', '.h', '.cxx', '.c', '.svg', '.xml', '.json', '.inc', '.txt'}
-          search_dirs = [
-              os.path.join('orcaslicer-source', 'src'),
-              os.path.join('orcaslicer-source', 'resources'),
-          ]
-
-          total = 0
-          for search_dir in search_dirs:
-              for root, dirs, files in os.walk(search_dir):
-                  for fname in files:
-                      if os.path.splitext(fname)[1].lower() not in exts:
-                          continue
-                      fpath = os.path.join(root, fname)
-                      try:
-                          with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
-                              content = f.read()
-                          original = content
-                          for old, new in replacements:
-                              content = content.replace(old, new)
-                          if content != original:
-                              with open(fpath, 'w', encoding='utf-8') as f:
-                                  f.write(content)
-                              total += 1
-                              print(f'Patched: {fpath}')
-                      except Exception as e:
-                          print(f'  SKIP {fpath}: {e}')
-          print(f'\nTotal files patched: {total}')
-          "@
-          Set-Content -Path "patch_colors.py" -Value $script
-          python patch_colors.py
-
-      - name: Apply Kentstrapper logo (if provided)
+      # ── PATCH 2b: Patch splash screen in GUI_App.cpp ──────────────────────
+      - name: Patch splash screen (GUI_App.cpp)
         shell: pwsh
         run: |
-          $logoSrc = "kentstrapper-patches\branding\logo.png"
-          if (Test-Path $logoSrc) {
-            Write-Host "Applying Kentstrapper logo..."
-            $iconDirs = @(
-              "orcaslicer-source\resources\images",
-              "orcaslicer-source\resources\icons"
-            )
-            $targets = @(
-              "OrcaSlicer_128px.png", "OrcaSlicer_192px.png", "OrcaSlicer_256px.png",
-              "OrcaSlicer.png", "Splash_Logo.png"
-            )
-            foreach ($dir in $iconDirs) {
-              foreach ($t in $targets) {
-                $dest = Join-Path $dir $t
-                if (Test-Path $dest) {
-                  Copy-Item $logoSrc $dest -Force
-                  Write-Host "  Replaced: $dest"
-                }
+          python kentstrapper-patches\scripts\patch_splash.py orcaslicer-source
+
+      # ── PATCH 3: Verify colors + full teal scan ───────────────────────────
+      - name: Verify color replacement
+        shell: pwsh
+        run: |
+          $failed = $false
+          $tealPatterns = @("009688","BFE1DE","26A69A","52c7b8","52C7B8","0, 150, 136","E5F0EE","bfe1de")
+
+          function Check-File($path, $label) {
+            if (-not (Test-Path $path)) {
+              Write-Host "WARNING: $label not found at $path"
+              return
+            }
+            $content = Get-Content $path -Raw
+            $hasTeal = $false
+            foreach ($p in $tealPatterns) {
+              if ($content -match [regex]::Escape($p)) {
+                Write-Host "  TEAL '$p' found in $label"
+                $hasTeal = $true
+                $script:failed = $true
               }
             }
-          } else {
-            Write-Host "No branding/logo.png found, skipping logo replacement."
+            if (-not $hasTeal) {
+              Write-Host "OK: $label — no teal colors"
+            }
           }
 
-      - name: Apply Kentstrapper splash background (if provided)
+          Check-File "orcaslicer-source\src\slic3r\GUI\Widgets\Button.cpp"  "Button.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\TabButton.cpp"        "TabButton.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\Tabbook.cpp"          "Tabbook.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\Plater.cpp"           "Plater.cpp"
+          Check-File "orcaslicer-source\src\slic3r\GUI\MainFrame.cpp"        "MainFrame.cpp"
+
+          # Broad scan: find ANY remaining teal in all cpp/hpp files
+          Write-Host "`n=== Full scan for remaining teal in src/ ==="
+          $remaining = Get-ChildItem "orcaslicer-source\src" -Recurse -Include "*.cpp","*.hpp","*.h" |
+            Select-String -Pattern "009688|BFE1DE|52c7b8|0, 150, 136" -CaseSensitive:$false |
+            Select-Object -First 30
+          if ($remaining) {
+            Write-Host "REMAINING TEAL occurrences (first 30):"
+            $remaining | ForEach-Object { Write-Host "  $($_.Filename):$($_.LineNumber): $($_.Line.Trim())" }
+            $failed = $true
+          } else {
+            Write-Host "No remaining teal found in src/ cpp/hpp files."
+          }
+
+          if ($failed) { exit 1 }
+
+      # ── PATCH 4: Replace app icon ──────────────────────────────────────────
+      - name: Apply Kentstrapper icons
         shell: pwsh
         run: |
-          $bgSrc = "kentstrapper-patches\branding\background.png"
-          if (Test-Path $bgSrc) {
-            Write-Host "Applying Kentstrapper splash background..."
-            $targets = @(
-              "orcaslicer-source\resources\images\Splash.png",
-              "orcaslicer-source\resources\images\splash.png",
-              "orcaslicer-source\resources\images\OrcaSlicer-splash.png"
-            )
-            foreach ($dest in $targets) {
+          $imgDir = "orcaslicer-source\resources\images"
+          Write-Host "Applying Kentstrapper icons..."
+
+          # ICO file (already correct format — use directly)
+          $icoSrc = "kentstrapper-patches\branding\logo.ico"
+          if (Test-Path $icoSrc) {
+            Copy-Item $icoSrc (Join-Path $imgDir "OrcaSlicer.ico") -Force
+            Copy-Item $icoSrc (Join-Path $imgDir "OrcaSlicerTitle.ico") -Force
+            Write-Host "  Replaced: OrcaSlicer.ico + OrcaSlicerTitle.ico"
+          }
+
+          # PNG icons — all standard sizes
+          $pngSrc = "kentstrapper-patches\branding\logo.png"
+          if (Test-Path $pngSrc) {
+            foreach ($t in @("OrcaSlicer.png","OrcaSlicer_32px.png","OrcaSlicer_64.png","OrcaSlicer_128px.png","OrcaSlicer_192px.png","OrcaSlicerTitle.png")) {
+              $dest = Join-Path $imgDir $t
               if (Test-Path $dest) {
-                Copy-Item $bgSrc $dest -Force
-                Write-Host "  Replaced: $dest"
+                Copy-Item $pngSrc $dest -Force
+                Write-Host "  Replaced PNG: $t"
               }
             }
-          } else {
-            Write-Host "No branding/background.png found, skipping splash replacement."
           }
 
-      - name: Include Kentstrapper profiles (if provided)
+          # High-res 1024px icon
+          $pngLarge = "kentstrapper-patches\branding\logo_1024.png"
+          if (Test-Path $pngLarge) {
+            Copy-Item $pngLarge (Join-Path $imgDir "OrcaSlicer_1024.png") -Force
+            Write-Host "  Added: OrcaSlicer_1024.png"
+          }
+
+      # ── PATCH 5: Replace splash screen ────────────────────────────────────
+      - name: Apply Kentstrapper splash screen
+        shell: pwsh
+        run: |
+          $bg     = "kentstrapper-patches\branding\background.png"
+          $imgDir = "orcaslicer-source\resources\images"
+
+          if (-not (Test-Path $bg)) {
+            Write-Host "No background.png found, skipping."
+            exit 0
+          }
+
+          Write-Host "Applying Kentstrapper splash screen..."
+
+          # Our patched GUI_App.cpp loads OrcaSlicer_154.png as the splash background
+          # Replace it with the Kentstrapper custom image
+          $dest = Join-Path $imgDir "OrcaSlicer_154.png"
+          Copy-Item $bg $dest -Force
+          Write-Host "  Replaced: OrcaSlicer_154.png (loaded by patched GUI_App.cpp)"
+
+          # Also replace the title variant
+          $dest2 = Join-Path $imgDir "OrcaSlicer_154_title.png"
+          if (Test-Path $dest2) {
+            Copy-Item $bg $dest2 -Force
+            Write-Host "  Replaced: OrcaSlicer_154_title.png"
+          }
+
+      # ── PATCH 6: Installer branding text ──────────────────────────────────
+      - name: Patch installer branding text
+        shell: pwsh
+        run: |
+          Write-Host "Patching installer display name and branding..."
+
+          # Patch CMakeLists.txt - change installer description and install dir
+          $cmake = "orcaslicer-source\CMakeLists.txt"
+          if (Test-Path $cmake) {
+            $c = Get-Content $cmake -Raw
+            $c = $c -replace 'set\(CPACK_PACKAGE_DESCRIPTION_SUMMARY\s+"[^"]*"\)', 'set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "OrcaSlicer branded version by Kentstrapper")'
+            $c = $c -replace 'set\(CPACK_NSIS_PACKAGE_NAME\s+"[^"]*"\)', 'set(CPACK_NSIS_PACKAGE_NAME "OrcaSlicer branded by Kentstrapper")'
+            # Install to KentrapperSlicer folder to avoid DLL conflicts with official OrcaSlicer
+            $c = $c -replace 'set\(CPACK_PACKAGE_INSTALL_DIRECTORY\s+"[^"]*"\)', 'set(CPACK_PACKAGE_INSTALL_DIRECTORY "KentrapperSlicer")'
+            Set-Content $cmake $c
+            Write-Host "  Patched CMakeLists.txt"
+          }
+
+          # Patch NSIS script template directly
+          $nsiFiles = Get-ChildItem "orcaslicer-source" -Recurse -Filter "*.nsi"
+          foreach ($nsi in $nsiFiles) {
+            $c = Get-Content $nsi.FullName -Raw
+            $c = $c -replace 'Name "OrcaSlicer"', 'Name "OrcaSlicer branded by Kentstrapper"'
+            $c = $c -replace '!define PRODUCT_NAME "OrcaSlicer"', '!define PRODUCT_NAME "OrcaSlicer branded by Kentstrapper"'
+            Set-Content $nsi.FullName $c
+            Write-Host "  Patched NSI: $($nsi.Name)"
+          }
+
+      # ── PATCH 7: Pre-installed profiles ───────────────────────────────────
+      - name: Prepare Kentstrapper profiles (pre-build)
         shell: pwsh
         run: |
           $profilesSrc = "kentstrapper-patches\profiles"
-          if (Test-Path $profilesSrc) {
-            Write-Host "Copying Kentstrapper profiles to installer staging..."
-            $dest = "orcaslicer-source\resources\kentstrapper_profiles"
-            New-Item -ItemType Directory -Path $dest -Force | Out-Null
-            Copy-Item "$profilesSrc\*" $dest -Recurse -Force
-            Write-Host "  Profiles staged at: $dest"
-
-            $nsisScript = Get-ChildItem -Path "orcaslicer-source" -Recurse -Filter "*.nsi" | Select-Object -First 1
-            if ($nsisScript) {
-              $nsiContent = Get-Content $nsisScript.FullName -Raw
-              $line1 = '              ; Kentstrapper pre-installed profiles'
-              $line2 = '              SetOutPath "$APPDATA\OrcaSlicer\user\default"'
-              $line3 = '              File /r "${RESOURCEDIR}\kentstrapper_profiles\*"'
-              $profileInstall = "`n$line1`n$line2`n$line3`n"
-              $nsiContent = $nsiContent -replace '(?m)(SectionEnd[ \t]*)$', "$profileInstall`n`$1"
-              Set-Content $nsisScript.FullName $nsiContent
-              Write-Host "  NSIS script patched: $($nsisScript.FullName)"
-            }
-          } else {
-            Write-Host "No profiles/ folder found, skipping profile bundling."
+          if (-not (Test-Path $profilesSrc)) {
+            Write-Host "No profiles/ folder, skipping."
+            exit 0
           }
 
+          # Also inject the NSIS script to copy profiles from $INSTDIR to AppData at install time
+          $nsisScript = Get-ChildItem -Path "orcaslicer-source" -Recurse -Filter "*.nsi" | Select-Object -First 1
+          if ($nsisScript) {
+            $nsiContent = Get-Content $nsisScript.FullName -Raw
+            $inject = @"
+
+              ; Kentstrapper: copy pre-installed profiles to OrcaSlicer user data
+              ExecWait 'powershell.exe -NoProfile -Command "if (Test-Path \"`$INSTDIR\resources\kentstrapper_profiles\") { Copy-Item -Path \"`$INSTDIR\resources\kentstrapper_profiles\*\" -Destination \"`$APPDATA\OrcaSlicer\user\default\" -Recurse -Force }"'
+
+"@
+            $nsiContent = $nsiContent -replace '(?m)(SectionEnd[ \t]*)$', "$inject`$1"
+            Set-Content $nsisScript.FullName $nsiContent
+            Write-Host "  NSIS profiles install command injected."
+          }
+
+      # ── BUILD ─────────────────────────────────────────────────────────────
       - name: Install NSIS
         run: choco install nsis -y
 
@@ -205,11 +273,13 @@ jobs:
         working-directory: orcaslicer-source
         shell: pwsh
         run: |
-          $versionContent = Get-Content version.inc -Raw
-          if ($versionContent -match 'set\(SoftFever_VERSION "(.*?)"\)') { $ver = $matches[1] }
-          $ver = "V$ver-Kentstrapper"
+          $v = Get-Content version.inc -Raw
+          if ($v -match 'set\(SoftFever_VERSION "(.*?)"\)') { $ver = $matches[1] }
+          $sha = "${{ github.sha }}".Substring(0, 7)
+          $ver = "V$ver-Kentstrapper-$sha"
           echo "ver=$ver" >> $env:GITHUB_ENV
-          echo "date=$(Get-Date -Format 'yyyyMMdd')" >> $env:GITHUB_ENV
+          echo "sha_short=$sha" >> $env:GITHUB_ENV
+          echo "date=$(Get-Date -Format 'yyyyMMdd-HHmm')" >> $env:GITHUB_ENV
 
       - name: Build OrcaSlicer
         working-directory: orcaslicer-source
@@ -217,6 +287,87 @@ jobs:
           WindowsSdkDir: 'C:\Program Files (x86)\Windows Kits\10\'
           WindowsSDKVersion: '10.0.26100.0\'
         run: .\build_release_vs.bat slicer
+
+      # ── Stage profiles in build output (must run AFTER build) ─────────────
+      - name: Stage profiles in build output
+        shell: pwsh
+        run: |
+          $profilesSrc = "kentstrapper-patches\profiles"
+          if (-not (Test-Path $profilesSrc)) {
+            Write-Host "No profiles/ folder, skipping."
+            exit 0
+          }
+          # Copy into the staged build directory so CPack packages them
+          $buildDest = "orcaslicer-source\build\OrcaSlicer\resources\kentstrapper_profiles"
+          New-Item -ItemType Directory -Path $buildDest -Force | Out-Null
+          Copy-Item "$profilesSrc\*" $buildDest -Recurse -Force
+          Write-Host "Profiles staged at: $buildDest"
+          Get-ChildItem $buildDest -Recurse | Select-Object -First 20 | ForEach-Object { Write-Host "  $($_.FullName)" }
+
+      # ── PATCH 8: Binary-patch color strings directly in the compiled EXE ────
+      - name: Binary-patch EXE color strings
+        shell: pwsh
+        run: |
+          function Patch-BinaryString($filePath, [string]$oldStr, [string]$newStr) {
+            if ($oldStr.Length -ne $newStr.Length) {
+              Write-Host "  SKIP length mismatch: '$oldStr'($($oldStr.Length)) vs '$newStr'($($newStr.Length))"
+              return 0
+            }
+            $oldBytes = [System.Text.Encoding]::ASCII.GetBytes($oldStr)
+            $newBytes = [System.Text.Encoding]::ASCII.GetBytes($newStr)
+            $bytes = [System.IO.File]::ReadAllBytes($filePath)
+            $count = 0
+            for ($i = 0; $i -le $bytes.Length - $oldBytes.Length; $i++) {
+              $match = $true
+              for ($j = 0; $j -lt $oldBytes.Length; $j++) {
+                if ($bytes[$i + $j] -ne $oldBytes[$j]) { $match = $false; break }
+              }
+              if ($match) {
+                for ($j = 0; $j -lt $newBytes.Length; $j++) { $bytes[$i + $j] = $newBytes[$j] }
+                $count++
+                $i += $oldBytes.Length - 1
+              }
+            }
+            if ($count -gt 0) { [System.IO.File]::WriteAllBytes($filePath, $bytes) }
+            return $count
+          }
+
+          $replacements = @(
+            @("#009688", "#FF8800"),
+            @("#009688".ToUpper(), "#FF8800"),
+            @("#26A69A", "#CC6E00"),
+            @("#26a69a", "#cc6e00"),
+            @("#BFE1DE", "#FFE0B2"),
+            @("#bfe1de", "#ffe0b2"),
+            @("#E5F0EE", "#FFF3E0"),
+            @("#e5f0ee", "#fff3e0"),
+            @("#52C7B8", "#FFAA33"),
+            @("#52c7b8", "#ffaa33"),
+            @("#22bfb0", "#FF9933"),
+            @("#22BFBO", "#FF9933"),
+            @("#00FFD4", "#FFAA44"),
+            @("#00897B", "#CC6E00"),
+            @("#D7E8DE", "#FFE8CC"),
+            @("#EDFAF2", "#FFF8EE")
+          )
+
+          $exe = Get-ChildItem "orcaslicer-source\build" -Recurse -Filter "orca-slicer.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) {
+            Write-Host "ERROR: orca-slicer.exe not found!"
+            Get-ChildItem "orcaslicer-source\build" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name)" }
+            exit 1
+          }
+
+          Write-Host "Binary patching: $($exe.FullName) ($([int]([System.IO.FileInfo]$exe.FullName).Length / 1MB) MB)"
+          $total = 0
+          foreach ($pair in $replacements) {
+            $n = Patch-BinaryString $exe.FullName $pair[0] $pair[1]
+            if ($n -gt 0) {
+              Write-Host "  '$($pair[0])' -> '$($pair[1])': $n hits"
+              $total += $n
+            }
+          }
+          Write-Host "Binary color patch complete: $total total replacements"
 
       - name: Create installer
         working-directory: orcaslicer-source/build
@@ -240,23 +391,23 @@ jobs:
           path: orcaslicer-source/build/KentrapperSlicer_Windows_${{ env.ver }}_portable.zip
 
       - name: Create GitHub Release
-        if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && inputs.create-release == true)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/main-slim' || github.ref == 'refs/heads/claude/fork-orcaslicer-gzXqz' || (github.event_name == 'workflow_dispatch' && inputs.create-release == true)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: kentstrapper-${{ env.ver }}-${{ env.date }}
           name: "Kentstrapper OrcaSlicer ${{ env.ver }} (${{ env.date }})"
           body: |
-            ## Kentstrapper OrcaSlicer ${{ env.ver }} - Windows Build
+            ## OrcaSlicer branded version by Kentstrapper — ${{ env.ver }}
 
             OrcaSlicer **v2.3.2 stabile** rebranded con i colori aziendali Kentstrapper.
 
             ### Download
-            - **Installer** (`.exe`) - consigliato, include profili pre-installati
-            - **Portable** (`.zip`) - nessuna installazione, decomprimi e avvia
+            - **Installer** (`.exe`) — consigliato, include profili pre-installati
+            - **Portable** (`.zip`) — nessuna installazione, decomprimi e avvia
 
-            ### Modifiche
-            - Colore accent: teal -> arancione Kentstrapper #FF8800 (tutti i file)
-            - Logo e splash screen Kentstrapper
+            ### Incluso
+            - Colori arancione Kentstrapper #FF8800 in tutta la UI
+            - Icona e splash screen Kentstrapper
             - Profili filament/machine/process pre-installati
           draft: false
           prerelease: false
