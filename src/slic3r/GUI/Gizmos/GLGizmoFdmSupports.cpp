@@ -308,16 +308,13 @@ void GLGizmoFdmSupports::on_render_input_window(float x, float y, float bottom_l
 
     // --- Per-region support type selection (ported from preFlight slicer) ---
     // The radio buttons select which support style is painted with the left
-    // mouse button.  m_enforcer_type == 0 (Snug) is the default and keeps the
-    // same behaviour as before this change (EnforcerBlockerType::ENFORCER).
+    // mouse button.  m_enforcer_type drives get_left_button_state_type():
+    //   0 (Snug)    → EnforcerBlockerType::ENFORCER
+    //   1 (Grid)    → EnforcerBlockerType::GRID_ENFORCER
+    //   2 (Organic) → EnforcerBlockerType::ORGANIC_ENFORCER
     //
-    // TODO (step 4c): once OrcaSlicer's EnforcerBlockerType gains
-    //   GRID_ENFORCER and ORGANIC_ENFORCER values, override
-    //   get_left_button_state_type() to map m_enforcer_type → those values.
     // TODO (step 4d): serialize m_enforcer_type per painted region in the
     //   3MF project file so selections survive save/load.
-    // TODO (step 5): verify SupportMaterial.cpp / TreeSupport.cpp consume
-    //   the extended per-triangle state once step 4c is done.
     ImGui::AlignTextToFramePadding();
     m_imgui->text(m_desc.at("enforcer_type"));
     ImGui::SameLine();
@@ -635,9 +632,11 @@ void GLGizmoFdmSupports::update_from_model_object(bool first_update)
 
     int volume_id = -1;
     std::vector<ColorRGBA> ebt_colors;
-    ebt_colors.push_back(GLVolume::NEUTRAL_COLOR);
-    ebt_colors.push_back(TriangleSelectorGUI::enforcers_color);
-    ebt_colors.push_back(TriangleSelectorGUI::blockers_color);
+    ebt_colors.push_back(GLVolume::NEUTRAL_COLOR);                   // [0] NONE
+    ebt_colors.push_back(TriangleSelectorGUI::enforcers_color);      // [1] ENFORCER      (blue/green)
+    ebt_colors.push_back(TriangleSelectorGUI::blockers_color);       // [2] BLOCKER        (red)
+    ebt_colors.push_back(ColorRGBA{1.0f, 0.6f, 0.0f, 1.0f});        // [3] GRID_ENFORCER  (orange)
+    ebt_colors.push_back(ColorRGBA{0.2f, 0.8f, 0.2f, 1.0f});        // [4] ORGANIC_ENFORCER (green)
     for (const ModelVolume* mv : mo->volumes) {
         if (! mv->is_model_part())
             continue;
@@ -662,6 +661,30 @@ void GLGizmoFdmSupports::update_from_model_object(bool first_update)
 PainterGizmoType GLGizmoFdmSupports::get_painter_type() const
 {
     return PainterGizmoType::FDM_SUPPORTS;
+}
+
+// Map the UI radio-button selection (m_enforcer_type) to the appropriate
+// EnforcerBlockerType that will be stored in the TriangleSelector state.
+//
+//   0 (Snug)    → ENFORCER          – existing behaviour, blue in UI
+//   1 (Grid)    → GRID_ENFORCER     – orange in UI
+//   2 (Organic) → ORGANIC_ENFORCER  – green in UI
+//
+// TODO (backend): SupportMaterial.cpp currently calls
+//   object.project_and_append_custom_facets(false, EnforcerBlockerType::ENFORCER, …)
+//   which only collects triangles with state == ENFORCER.  Once we want
+//   GRID_ENFORCER and ORGANIC_ENFORCER to actually route to different support
+//   algorithms, that function needs additional calls (one per type) and the
+//   slicer back-end needs to process the resulting layer sets with the
+//   corresponding SupportStyle.  For now both new types are painted and stored
+//   correctly but are treated identically to ENFORCER during slicing.
+EnforcerBlockerType GLGizmoFdmSupports::get_left_button_state_type() const
+{
+    switch (m_enforcer_type) {
+        case 1:  return EnforcerBlockerType::GRID_ENFORCER;
+        case 2:  return EnforcerBlockerType::ORGANIC_ENFORCER;
+        default: return EnforcerBlockerType::ENFORCER; // Snug (0) = existing behaviour
+    }
 }
 
 wxString GLGizmoFdmSupports::handle_snapshot_action_name(bool shift_down, GLGizmoPainterBase::Button button_down) const

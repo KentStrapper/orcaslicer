@@ -43,6 +43,10 @@ protected:
     // BBS
     wchar_t                           m_current_tool = 0;
 
+    // Per-region support type: maps m_enforcer_type to the correct
+    // EnforcerBlockerType so the left mouse button paints the chosen style.
+    EnforcerBlockerType get_left_button_state_type() const override;
+
 private:
     bool on_init() override;
 
@@ -78,12 +82,9 @@ private:
     bool m_is_tree_support = false;
     bool m_cancel = false;
     // Per-region support type selection (ported from preFlight slicer).
-    // 0 = Snug (default, same as existing ENFORCER behaviour)
-    // 1 = Grid
-    // 2 = Organic
-    // TODO (step 4c): wire to get_left_button_state_type() once EnforcerBlockerType
-    //   gains GRID_ENFORCER / ORGANIC_ENFORCER values analogous to preFlight's
-    //   TriangleStateType.
+    // 0 = Snug  → EnforcerBlockerType::ENFORCER
+    // 1 = Grid  → EnforcerBlockerType::GRID_ENFORCER
+    // 2 = Organic → EnforcerBlockerType::ORGANIC_ENFORCER
     // TODO (step 4d): serialize/deserialize m_enforcer_type per painted region in 3MF.
     int m_enforcer_type = 0;
     size_t m_object_id;
