@@ -54,9 +54,9 @@ jobs:
           path: orcaslicer-source/deps/build/OrcaSlicer_dep
           key: windows-orcaslicer-deps-${{ steps.orca_sha.outputs.sha }}
 
-      - uses: lukka/get-cmake@latest
+      - uses: lukka/get-cmake@v3
         with:
-          cmakeVersion: "~4.3.0"
+          cmakeVersion: "~3.28.0"
           useLocalCache: true
           useCloudCache: true
 
