@@ -54,11 +54,11 @@ jobs:
           path: orcaslicer-source/deps/build/OrcaSlicer_dep
           key: windows-orcaslicer-deps-${{ steps.orca_sha.outputs.sha }}
 
-      - uses: lukka/get-cmake@latest
-        with:
-          cmakeVersion: "~3.28.0"
-          useLocalCache: true
-          useCloudCache: true
+      - name: Install CMake 3.28 via Chocolatey
+        run: choco install cmake --version 3.28.3 --installargs 'ADD_CMAKE_TO_PATH=System' -y --no-progress
+
+      - name: Verify CMake version
+        run: cmake --version
 
       - name: Setup MSVC
         uses: microsoft/setup-msbuild@v2
