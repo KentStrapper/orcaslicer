@@ -240,8 +240,8 @@ jobs:
             Write-Host "  Patched NSI: $($nsi.Name)"
           }
 
-      # ── PATCH 6b: Desktop folder install commands ─────────────────────────
-      - name: Inject desktop folder installation commands
+      # ── PATCH 6b: Desktop folders + profiles install commands ────────────
+      - name: Inject NSIS install commands (desktop folders + profiles)
         shell: pwsh
         run: |
           $cmake = "orcaslicer-source\CMakeLists.txt"
@@ -252,6 +252,7 @@ jobs:
           $c = Get-Content $cmake -Raw
           $nsisExtra = @'
           set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "
+            ExecWait 'powershell.exe -NoProfile -Command \"if (Test-Path \\\"$INSTDIR\\resources\\kentstrapper_profiles\\\") { New-Item -ItemType Directory -Force \\\"$APPDATA\\OrcaSlicer\\user\\default\\\" | Out-Null; Copy-Item -Path \\\"$INSTDIR\\resources\\kentstrapper_profiles\\*\\\" -Destination \\\"$APPDATA\\OrcaSlicer\\user\\default\\\" -Recurse -Force }\"'
             ExecWait 'powershell.exe -NoProfile -Command \"Expand-Archive -Path \\\"$INSTDIR\\desktop_files\\Manuali 1-3.zip\\\" -DestinationPath \\\"$DESKTOP\\Manuali 1-3\\\" -Force\"'
             ExecWait 'powershell.exe -NoProfile -Command \"Expand-Archive -Path \\\"$INSTDIR\\desktop_files\\Manuali 4-6.zip\\\" -DestinationPath \\\"$DESKTOP\\Manuali 4-6\\\" -Force\"'
             ExecWait 'powershell.exe -NoProfile -Command \"Expand-Archive -Path \\\"$INSTDIR\\desktop_files\\file piatti.zip\\\" -DestinationPath \\\"$DESKTOP\\file piatti\\\" -Force\"'
@@ -261,36 +262,23 @@ jobs:
           if ($c -match 'include\(CPack\)') {
             $c = $c.Replace('include(CPack)', ($nsisExtra + "`ninclude(CPack)"))
             Set-Content $cmake $c
-            Write-Host "Desktop folder install commands injected before include(CPack)"
+            Write-Host "NSIS install commands injected before include(CPack)"
           } else {
             $c += "`n" + $nsisExtra
             Set-Content $cmake $c
             Write-Host "include(CPack) not found; appended to end of CMakeLists.txt"
           }
 
-      # ── PATCH 7: Pre-installed profiles ───────────────────────────────────
-      - name: Prepare Kentstrapper profiles (pre-build)
+      # ── PATCH 7: Confirm profiles folder exists ────────────────────────────
+      - name: Confirm Kentstrapper profiles present
         shell: pwsh
         run: |
           $profilesSrc = "kentstrapper-patches\profiles"
-          if (-not (Test-Path $profilesSrc)) {
-            Write-Host "No profiles/ folder, skipping."
-            exit 0
-          }
-
-          # Also inject the NSIS script to copy profiles from $INSTDIR to AppData at install time
-          $nsisScript = Get-ChildItem -Path "orcaslicer-source" -Recurse -Filter "*.nsi" | Select-Object -First 1
-          if ($nsisScript) {
-            $nsiContent = Get-Content $nsisScript.FullName -Raw
-            $inject = @"
-
-              ; Kentstrapper: copy pre-installed profiles to OrcaSlicer user data
-              ExecWait 'powershell.exe -NoProfile -Command "if (Test-Path \"`$INSTDIR\resources\kentstrapper_profiles\") { Copy-Item -Path \"`$INSTDIR\resources\kentstrapper_profiles\*\" -Destination \"`$APPDATA\OrcaSlicer\user\default\" -Recurse -Force }"'
-
-          "@
-            $nsiContent = $nsiContent -replace '(?m)(SectionEnd[ \t]*)$', "$inject`$1"
-            Set-Content $nsisScript.FullName $nsiContent
-            Write-Host "  NSIS profiles install command injected."
+          if (Test-Path $profilesSrc) {
+            $count = (Get-ChildItem $profilesSrc -Recurse -File).Count
+            Write-Host "Profiles folder found: $count files (will be staged after build)"
+          } else {
+            Write-Host "WARNING: No profiles/ folder found"
           }
 
       # ── BUILD ─────────────────────────────────────────────────────────────
