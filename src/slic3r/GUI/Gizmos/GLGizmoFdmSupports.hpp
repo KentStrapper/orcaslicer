@@ -33,7 +33,7 @@ protected:
     std::string on_get_name() const override;
 
     void on_set_state() override;
-    void render_tooltip_button(float x, float y);
+    void show_tooltip_information(float caption_max, float x, float y);
     wxString handle_snapshot_action_name(bool shift_down, Button button_down) const override;
 
     std::string get_gizmo_entering_text() const override { return "Entering Paint-on supports"; }
@@ -43,8 +43,8 @@ protected:
     // BBS
     wchar_t                           m_current_tool = 0;
 
-    // Per-region support type: maps m_enforcer_type to the correct
-    // EnforcerBlockerType so the left mouse button paints the chosen style.
+    // Per-region support type: 0=Snug(default), 1=Grid, 2=Organic
+    int m_enforcer_type = 0;
     EnforcerBlockerType get_left_button_state_type() const override;
 
 private:
@@ -81,12 +81,6 @@ private:
     mutable bool m_volume_ready = false;
     bool m_is_tree_support = false;
     bool m_cancel = false;
-    // Per-region support type selection (ported from preFlight slicer).
-    // 0 = Snug  → EnforcerBlockerType::ENFORCER
-    // 1 = Grid  → EnforcerBlockerType::GRID_ENFORCER
-    // 2 = Organic → EnforcerBlockerType::ORGANIC_ENFORCER
-    // TODO (step 4d): serialize/deserialize m_enforcer_type per painted region in 3MF.
-    int m_enforcer_type = 0;
     size_t m_object_id;
     std::vector<ObjectBase::Timestamp> m_volume_timestamps;
     PrintInstance m_print_instance;
@@ -100,13 +94,6 @@ private:
     // This map holds all translated description texts, so they can be easily referenced during layout calculations
     // etc. When language changes, GUI is recreated and this class constructed again, so the change takes effect.
     std::map<std::string, wxString> m_desc;
-
-    // Contains all shortcuts in the format of {shortcut, description}, e.g. {alt + _L("Left mouse button"), _L("Part_selection")}
-    std::vector<std::pair<wxString, wxString>> m_shortcuts_brush;
-    // Contains all shortcuts in the format of {shortcut, description}, e.g. {alt + _L("Left mouse button"), _L("Part_selection")}
-    std::vector<std::pair<wxString, wxString>> m_shortcuts_bucket_fill;
-    // Contains all shortcuts in the format of {shortcut, description}, e.g. {alt + _L("Left mouse button"), _L("Part_selection")}
-    std::vector<std::pair<wxString, wxString>> m_shortcuts_gap_fill;
 };
 
 

@@ -14,9 +14,8 @@
 #include "slic3r/GUI/format.hpp"
 #include "slic3r/GUI/GUI.hpp"
 #include "slic3r/Utils/UndoRedo.hpp"
-#include "GLGizmoUtils.hpp"
 
-#include <glad/gl.h>
+#include <GL/glew.h>
 
 #include <boost/log/trivial.hpp>
 
@@ -80,52 +79,37 @@ bool GLGizmoFdmSupports::on_init()
     // BBS
     m_shortcut_key = WXK_CONTROL_L;
 
-    m_desc["perform"]            = _L("Perform");
-    m_desc["on_overhangs_only"]  = _L("On highlighted overhangs only");
-    m_desc["remove_all"]         = _L("Erase all painting");
-    m_desc["highlight_by_angle"] = _L("Highlight overhang areas");
-    m_desc["tool_type"]          = _L("Tool type");
-    m_desc["gap_fill"]           = _L("Gap fill");
-    m_desc["reset_direction"]    = _L("Reset direction");
-    m_desc["clipping_of_view"]   = _L("Section view");
-    m_desc["cursor_size"]        = _L("Brush size");
-    m_desc["smart_fill_angle"]   = _L("Smart fill angle");
-    m_desc["gap_area"]           = _L("Gap area");
-    // Per-region support type selection (ported from preFlight slicer)
-    m_desc["enforcer_type"]      = _L("Support type") + ":";
-    m_desc["enforcer_snug"]      = _L("Snug");
-    m_desc["enforcer_grid"]      = _L("Grid");
-    m_desc["enforcer_organic"]   = _L("Organic");
+    // FIXME: maybe should be using GUI::shortkey_ctrl_prefix() or equivalent?
+    const wxString ctrl  = _L("Ctrl+");
+    // FIXME: maybe should be using GUI::shortkey_alt_prefix() or equivalent?
+    const wxString alt   = _L("Alt+");
+    const wxString shift = _L("Shift+");
 
-
-    const wxString ctrl  = GUI::shortkey_ctrl_prefix();
-    const wxString alt   = GUI::shortkey_alt_prefix();
-    const wxString shift = GUI::shortkey_shift_prefix();
-
-    std::pair<wxString, wxString> enforce_shortcut  = {_L("Left mouse button"),         _L("Enforce supports")};
-    std::pair<wxString, wxString> block_shortcut    = {_L("Right mouse button"),        _L("Block supports")};
-    std::pair<wxString, wxString> remove_shortcut   = {shift + _L("Left mouse button"), _L("Erase")};
-    std::pair<wxString, wxString> clipping_shortcut = {alt + _L("Mouse wheel"),         m_desc["clipping_of_view"]};
-
-    m_shortcuts_brush = {
-        enforce_shortcut, 
-        block_shortcut, 
-        remove_shortcut,
-        {ctrl + _L("Mouse wheel"), m_desc["cursor_size"]},
-        clipping_shortcut
-    };
-
-    m_shortcuts_bucket_fill = {
-        enforce_shortcut, 
-        block_shortcut, 
-        remove_shortcut,
-        {ctrl + _L("Mouse wheel"),  m_desc["smart_fill_angle"]},
-        clipping_shortcut
-    };
-
-    m_shortcuts_gap_fill = {
-        {ctrl + _L("Mouse wheel"), _L("Gap area")}
-    };
+    m_desc["clipping_of_view_caption"] = alt + _L("Mouse wheel");
+    m_desc["clipping_of_view"]      = _L("Section view");
+    m_desc["reset_direction"]       = _L("Reset direction");
+    m_desc["cursor_size_caption"]   = ctrl + _L("Mouse wheel");
+    m_desc["cursor_size"]           = _L("Pen size");
+    m_desc["enforce_caption"]       = _L("Left mouse button");
+    m_desc["enforce"]               = _L("Enforce supports");
+    m_desc["block_caption"]         = _L("Right mouse button");
+    m_desc["block"]                 = _L("Block supports");
+    m_desc["remove_caption"]        = shift + _L("Left mouse button");
+    m_desc["remove"]                = _L("Erase");
+    m_desc["remove_all"]            = _L("Erase all painting");
+    m_desc["highlight_by_angle"]    = _L("Highlight overhang areas");
+    m_desc["gap_fill"]              = _L("Gap fill");
+    m_desc["perform"]               = _L("Perform");
+    m_desc["gap_area_caption"]      = ctrl + _L("Mouse wheel");
+    m_desc["gap_area"]              = _L("Gap area");
+    m_desc["tool_type"]             = _L("Tool type");
+    m_desc["smart_fill_angle_caption"] = ctrl + _L("Mouse wheel");
+    m_desc["smart_fill_angle"]      = _L("Smart fill angle");
+    m_desc["on_overhangs_only"] = _L("On overhangs only");
+    m_desc["enforcer_type"]    = _L("Support type") + ":";
+    m_desc["enforcer_snug"]    = _L("Snug");
+    m_desc["enforcer_grid"]    = _L("Grid");
+    m_desc["enforcer_organic"] = _L("Organic");
 
     memset(&m_print_instance, 0, sizeof(m_print_instance));
     return true;
@@ -196,12 +180,6 @@ void GLGizmoFdmSupports::on_render_input_window(float x, float y, float bottom_l
     if (! m_c->selection_info()->model_object())
         return;
 
-    float  scale       = m_parent.get_scale();
-    #ifdef WIN32
-        int dpi = get_dpi_for_window(wxGetApp().GetTopWindow());
-        scale *= (float) dpi / (float) DPI_DEFAULT;
-    #endif // WIN32
-
     // BBS
     wchar_t old_tool = m_current_tool;
 
@@ -254,7 +232,7 @@ void GLGizmoFdmSupports::on_render_input_window(float x, float y, float bottom_l
     const float max_tooltip_width = ImGui::GetFontSize() * 20.0f;
 
     const float sliders_width = m_imgui->scaled(7.0f);
-    const float drag_left_width = ImGui::GetStyle().WindowPadding.x + sliders_width - space_size;
+    const float drag_left_width = ImGui::GetStyle().WindowPadding.x + sliders_left_width + sliders_width - space_size;
 
     float drag_pos_times     = 0.7;
 
@@ -269,24 +247,30 @@ void GLGizmoFdmSupports::on_render_input_window(float x, float y, float bottom_l
 
     std::array<wxString, 4> tool_tips = { _L("Circle"), _L("Sphere"), _L("Fill"), _L("Gap Fill") };
     for (int i = 0; i < tool_ids.size(); i++) {
-        //std::string  str_label = std::string("##");
-        //std::wstring btn_name = icons[i] + boost::nowide::widen(str_label);
+        std::string  str_label = std::string("##");
+        std::wstring btn_name = icons[i] + boost::nowide::widen(str_label);
 
         if (i != 0) ImGui::SameLine((empty_button_width + m_imgui->scaled(1.75f)) * i + m_imgui->scaled(1.3f));
 
-        bool is_active = m_current_tool == tool_ids[i];
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.f);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding  , 3.f * scale);
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding   , ImVec2(4.f * scale, 4.f * scale));
-        ImGui::PushStyleColor(ImGuiCol_Text         , ImVec4(1,1,1,1)); // ORCA Fixes icon rendered without colors while using Light theme
-        ImGui::PushStyleColor(ImGuiCol_Button       , is_active ? ImVec4(0.f, .59f, .53f, .25f) : ImVec4(0,0,0,0));         // ORCA
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, is_active ? ImVec4(0.f, .59f, .53f, .25f) : ImVec4(.6f,.6f,.6f,.2f)); // ORCA
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive , is_active ? ImVec4(0.f, .59f, .53f, .30f) : ImVec4(0,0,0,0));         // ORCA
-        ImGui::PushStyleColor(ImGuiCol_Border       , is_active ? ImGuiWrapper::COL_ORCA        : ImVec4(0,0,0,0));         // ORCA
-        ImGui::PushStyleColor(ImGuiCol_BorderActive , is_active ? ImGuiWrapper::COL_ORCA        : ImVec4(0,0,0,0));         // ORCA matched color for fixing flicker on click
-        bool btn_clicked = m_imgui->glyph_button(icons[i], ImVec2(16.f  * scale, 16.f  * scale)); // ORCA glyph_button for fixing unequal paddings
-        ImGui::PopStyleColor(6);
-        ImGui::PopStyleVar(3);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0);
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));                     // ORCA Removes button background on dark mode
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.f));                       // ORCA: Fixes icon rendered without colors while using Light theme
+        if (m_current_tool == tool_ids[i]) {
+            ImGui::PushStyleColor(ImGuiCol_Button,          ImVec4(0.f, 0.59f, 0.53f, 0.25f));  // ORCA use orca color for selected tool / brush
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered,   ImVec4(0.f, 0.59f, 0.53f, 0.25f));  // ORCA use orca color for selected tool / brush
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,    ImVec4(0.f, 0.59f, 0.53f, 0.30f));  // ORCA use orca color for selected tool / brush
+            ImGui::PushStyleColor(ImGuiCol_Border,          ImGuiWrapper::COL_ORCA);            // ORCA use orca color for border on selected tool / brush
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0);
+        }
+        bool btn_clicked = ImGui::Button(into_u8(btn_name).c_str());
+        if (m_current_tool == tool_ids[i])
+        {
+            ImGui::PopStyleColor(4);
+            ImGui::PopStyleVar(2);
+        }
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(1);
 
         if (btn_clicked && m_current_tool != tool_ids[i]) {
             m_current_tool = tool_ids[i];
@@ -301,38 +285,22 @@ void GLGizmoFdmSupports::on_render_input_window(float x, float y, float bottom_l
         }
     }
 
-    if (m_current_tool != old_tool)
-        this->tool_changed(old_tool, m_current_tool);
+    m_imgui->bbl_checkbox(m_desc["on_overhangs_only"], m_paint_on_overhangs_only);
+    if (ImGui::IsItemHovered())
+        m_imgui->tooltip(format_wxstr(_L("Allows painting only on facets selected by: \"%1%\""), m_desc["highlight_by_angle"]), max_tooltip_width);
 
-    ImGui::Dummy(ImVec2(0.0f, ImGui::GetFontSize() * 0.1));
-
-    // --- Per-region support type selection (ported from preFlight slicer) ---
-    // The radio buttons select which support style is painted with the left
-    // mouse button.  m_enforcer_type drives get_left_button_state_type():
-    //   0 (Snug)    → EnforcerBlockerType::ENFORCER
-    //   1 (Grid)    → EnforcerBlockerType::GRID_ENFORCER
-    //   2 (Organic) → EnforcerBlockerType::ORGANIC_ENFORCER
-    //
-    // TODO (step 4d): serialize m_enforcer_type per painted region in the
-    //   3MF project file so selections survive save/load.
-    ImGui::AlignTextToFramePadding();
+    ImGui::Separator();
     m_imgui->text(m_desc.at("enforcer_type"));
     ImGui::SameLine();
-    if (m_imgui->radio_button(m_desc.at("enforcer_snug"), m_enforcer_type == 0))
-        m_enforcer_type = 0;
-    if (ImGui::IsItemHovered())
-        m_imgui->tooltip(_L("Paint regions that will use Snug support style."), max_tooltip_width);
+    if (m_imgui->radio_button(m_desc.at("enforcer_snug"),    m_enforcer_type == 0)) m_enforcer_type = 0;
     ImGui::SameLine();
-    if (m_imgui->radio_button(m_desc.at("enforcer_grid"), m_enforcer_type == 1))
-        m_enforcer_type = 1;
-    if (ImGui::IsItemHovered())
-        m_imgui->tooltip(_L("Paint regions that will use Grid support style."), max_tooltip_width);
+    if (m_imgui->radio_button(m_desc.at("enforcer_grid"),    m_enforcer_type == 1)) m_enforcer_type = 1;
     ImGui::SameLine();
-    if (m_imgui->radio_button(m_desc.at("enforcer_organic"), m_enforcer_type == 2))
-        m_enforcer_type = 2;
-    if (ImGui::IsItemHovered())
-        m_imgui->tooltip(_L("Paint regions that will use Organic (tree) support style."), max_tooltip_width);
-    // --- end per-region support type ---
+    if (m_imgui->radio_button(m_desc.at("enforcer_organic"), m_enforcer_type == 2)) m_enforcer_type = 2;
+    ImGui::Separator();
+
+    if (m_current_tool != old_tool)
+        this->tool_changed(old_tool, m_current_tool);
 
     ImGui::Dummy(ImVec2(0.0f, ImGui::GetFontSize() * 0.1));
 
@@ -345,7 +313,7 @@ void GLGizmoFdmSupports::on_render_input_window(float x, float y, float bottom_l
         ImGui::SameLine(sliders_left_width);
         ImGui::PushItemWidth(sliders_width);
         m_imgui->bbl_slider_float_style("##cursor_radius", &m_cursor_radius, CursorRadiusMin, CursorRadiusMax, "%.2f", 1.0f, true);
-        ImGui::SameLine(drag_left_width + sliders_left_width);
+        ImGui::SameLine(drag_left_width);
         ImGui::PushItemWidth(1.5 * slider_icon_width);
         ImGui::BBLDragFloat("##cursor_radius_input", &m_cursor_radius, 0.05f, 0.0f, 0.0f, "%.2f");
     } else if (m_current_tool == ImGui::SphereButtonIcon) {
@@ -357,7 +325,7 @@ void GLGizmoFdmSupports::on_render_input_window(float x, float y, float bottom_l
         ImGui::SameLine(sliders_left_width);
         ImGui::PushItemWidth(sliders_width);
         m_imgui->bbl_slider_float_style("##cursor_radius", &m_cursor_radius, CursorRadiusMin, CursorRadiusMax, "%.2f", 1.0f, true);
-        ImGui::SameLine(drag_left_width + sliders_left_width);
+        ImGui::SameLine(drag_left_width);
         ImGui::PushItemWidth(1.5 * slider_icon_width);
         ImGui::BBLDragFloat("##cursor_radius_input", &m_cursor_radius, 0.05f, 0.0f, 0.0f, "%.2f");
     } else if (m_current_tool == ImGui::FillButtonIcon) {
@@ -365,19 +333,16 @@ void GLGizmoFdmSupports::on_render_input_window(float x, float y, float bottom_l
         m_tool_type = ToolType::SMART_FILL;
 
         ImGui::AlignTextToFramePadding();
-        m_imgui->text(m_desc["smart_fill_angle"]);
-        std::string format_str = std::string("%.f") + I18N::translate_utf8("°",
-                                                                            "Face angle threshold,"
-                                                                            "placed after the number with no whitespace in between.");
+        m_imgui->text(m_desc.at("smart_fill_angle"));
+        std::string format_str = std::string("%.f") + I18N::translate_utf8("", "Face angle threshold, placed after the number with no whitespace in between.");
         ImGui::SameLine(sliders_left_width);
         ImGui::PushItemWidth(sliders_width);
-        if (m_imgui->bbl_slider_float_style("##smart_fill_angle", &m_smart_fill_angle, SmartFillAngleMin, SmartFillAngleMax,
-                                            format_str.data(), 1.0f, true))
+        if (m_imgui->bbl_slider_float_style("##smart_fill_angle", &m_smart_fill_angle, SmartFillAngleMin, SmartFillAngleMax, format_str.data(), 1.0f, true))
             for (auto& triangle_selector : m_triangle_selectors) {
                 triangle_selector->seed_fill_unselect_all_triangles();
                 triangle_selector->request_update_render_data();
             }
-        ImGui::SameLine(drag_left_width + sliders_left_width);
+        ImGui::SameLine(drag_left_width);
         ImGui::PushItemWidth(1.5 * slider_icon_width);
         ImGui::BBLDragFloat("##smart_fill_angle_input", &m_smart_fill_angle, 0.05f, 0.0f, 0.0f, "%.2f");
     } else if (m_current_tool == ImGui::GapFillIcon) {
@@ -390,18 +355,11 @@ void GLGizmoFdmSupports::on_render_input_window(float x, float y, float bottom_l
         ImGui::PushItemWidth(sliders_width);
         std::string format_str = std::string("%.2f") + I18N::translate_utf8("", "Triangle patch area threshold,""triangle patch will be merged to neighbor if its area is less than threshold");
         m_imgui->bbl_slider_float_style("##gap_area", &TriangleSelectorPatch::gap_area, TriangleSelectorPatch::GapAreaMin, TriangleSelectorPatch::GapAreaMax, format_str.data(), 1.0f, true);
-        ImGui::SameLine(drag_left_width + sliders_left_width);
+        ImGui::SameLine(drag_left_width);
         ImGui::PushItemWidth(1.5 * slider_icon_width);
         ImGui::BBLDragFloat("##gap_area_input", &TriangleSelectorPatch::gap_area, 0.05f, 0.0f, 0.0f, "%.2f");
     }
 
-     m_imgui->bbl_checkbox(m_desc["on_overhangs_only"], m_paint_on_overhangs_only);
-    if (ImGui::IsItemHovered())
-        m_imgui->tooltip(format_wxstr(_L("Allows painting only on facets selected by: \"%1%\""), m_desc["highlight_by_angle"]),
-                         max_tooltip_width);
-
-
-    ImGui::Separator();
     float position_before_text_y = ImGui::GetCursorPos().y;
     ImGui::AlignTextToFramePadding();
     m_imgui->text(m_desc["highlight_by_angle"]);
@@ -435,37 +393,40 @@ void GLGizmoFdmSupports::on_render_input_window(float x, float y, float bottom_l
         }
         ImGui::EndTooltip();
     }
-    ImGui::SameLine(drag_left_width + sliders_left_width);
+    ImGui::SameLine(drag_left_width);
     ImGui::PushItemWidth(1.5 * slider_icon_width);
     ImGui::BBLDragFloat("##angle_threshold_deg_input", &m_highlight_by_angle_threshold_deg, 0.05f, 0.0f, 0.0f, "%.2f");
 
-    ImGui::Separator();
-    if (m_c->object_clipper()->get_position() == 0.f) {
-        ImGui::AlignTextToFramePadding();
-        m_imgui->text(m_desc.at("clipping_of_view"));
-    }
-    else {
-        if (m_imgui->button(m_desc.at("reset_direction"))) {
-            wxGetApp().CallAfter([this]() {
-                    m_c->object_clipper()->set_position_by_ratio(-1., false);
-                });
+    if (m_current_tool != ImGui::GapFillIcon) {
+        ImGui::Separator();
+        if (m_c->object_clipper()->get_position() == 0.f) {
+            ImGui::AlignTextToFramePadding();
+            m_imgui->text(m_desc.at("clipping_of_view"));
         }
+        else {
+            if (m_imgui->button(m_desc.at("reset_direction"))) {
+                wxGetApp().CallAfter([this]() {
+                        m_c->object_clipper()->set_position_by_ratio(-1., false);
+                    });
+            }
+        }
+
+        auto clp_dist = float(m_c->object_clipper()->get_position());
+        ImGui::SameLine(sliders_left_width);
+        ImGui::PushItemWidth(sliders_width);
+        bool b_bbl_slider_float = m_imgui->bbl_slider_float_style("##clp_dist", &clp_dist, 0.f, 1.f, "%.2f", 1.0f, true);
+
+        ImGui::SameLine(drag_left_width);
+        ImGui::PushItemWidth(1.5 * slider_icon_width);
+        bool b_drag_input = ImGui::BBLDragFloat("##clp_dist_input", &clp_dist, 0.05f, 0.0f, 0.0f, "%.2f");
+
+        if (b_bbl_slider_float || b_drag_input) m_c->object_clipper()->set_position_by_ratio(clp_dist, true);
     }
-    auto clp_dist = float(m_c->object_clipper()->get_position());
-    ImGui::SameLine(sliders_left_width);
-    ImGui::PushItemWidth(sliders_width);
-    bool b_bbl_slider_float = m_imgui->bbl_slider_float_style("##clp_dist", &clp_dist, 0.f, 1.f, "%.2f", 1.0f, true);
-
-    ImGui::SameLine(drag_left_width + sliders_left_width);
-    ImGui::PushItemWidth(1.5 * slider_icon_width);
-    bool b_drag_input = ImGui::BBLDragFloat("##clp_dist_input", &clp_dist, 0.05f, 0.0f, 0.0f, "%.2f");
-
-    if (b_bbl_slider_float || b_drag_input) m_c->object_clipper()->set_position_by_ratio(clp_dist, true);
-    
 
     ImGui::Separator();
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 10.0f));
-    render_tooltip_button(x, y);
+    float get_cur_y = ImGui::GetContentRegionMax().y + ImGui::GetFrameHeight() + y;
+    show_tooltip_information(caption_max, x, get_cur_y);
 
     float f_scale =m_parent.get_gizmos_manager().get_layout_scale();
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 4.0f * f_scale));
@@ -523,22 +484,53 @@ void GLGizmoFdmSupports::tool_changed(wchar_t old_tool, wchar_t new_tool)
     }
 }
 
-void GLGizmoFdmSupports::render_tooltip_button(float x, float y) {
-    auto get_shortcuts = [this]() -> std::vector<std::pair<wxString, wxString>> {
-        switch (m_current_tool) {
-            case ImGui::CircleButtonIcon:
-            case ImGui::SphereButtonIcon:
-                return m_shortcuts_brush;
-            case ImGui::FillButtonIcon:
-                return m_shortcuts_bucket_fill;
-            case ImGui::GapFillIcon:
-                return m_shortcuts_gap_fill;
+void GLGizmoFdmSupports::show_tooltip_information(float caption_max, float x, float y)
+{
+    ImTextureID normal_id = m_parent.get_gizmos_manager().get_icon_texture_id(GLGizmosManager::MENU_ICON_NAME::IC_TOOLBAR_TOOLTIP);
+    ImTextureID hover_id  = m_parent.get_gizmos_manager().get_icon_texture_id(GLGizmosManager::MENU_ICON_NAME::IC_TOOLBAR_TOOLTIP_HOVER);
+
+    caption_max += m_imgui->calc_text_size(std::string_view{": "}).x + 15.f;
+
+    float  scale       = m_parent.get_scale();
+    #ifdef WIN32
+        int dpi = get_dpi_for_window(wxGetApp().GetTopWindow());
+        scale *= (float) dpi / (float) DPI_DEFAULT;
+    #endif // WIN32
+    ImVec2 button_size = ImVec2(25 * scale, 25 * scale); // ORCA: Use exact resolution will prevent blur on icon
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {0, 0}); // ORCA: Dont add padding
+    ImGui::ImageButton3(normal_id, hover_id, button_size);
+
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip2(ImVec2(x, y));
+        auto draw_text_with_caption = [this, &caption_max](const wxString &caption, const wxString &text) {
+            // BBS
+            m_imgui->text_colored(ImGuiWrapper::COL_ACTIVE, caption);
+            ImGui::SameLine(caption_max);
+            m_imgui->text_colored(ImGuiWrapper::COL_WINDOW_BG, text);
+        };
+
+        std::vector<std::string> tip_items;
+        switch (m_tool_type) {
+            case ToolType::BRUSH:
+                tip_items = {"enforce", "block", "remove", "cursor_size", "clipping_of_view"};
+                break;
+            case ToolType::BUCKET_FILL:
+                break;
+            case ToolType::SMART_FILL:
+                tip_items = {"enforce", "block", "remove", "smart_fill_angle", "clipping_of_view"};
+                break;
+            case ToolType::GAP_FILL:
+                tip_items = {"gap_area"};
+                break;
             default:
-                return {};
+                break;
         }
-    };
-    
-    GLGizmoUtils::render_tooltip_button(m_imgui, m_parent, get_shortcuts(), x, y);
+        for (const auto &t : tip_items) draw_text_with_caption(m_desc.at(t + "_caption") + ": ", m_desc.at(t));
+
+        ImGui::EndTooltip();
+    }
+    ImGui::PopStyleVar(2);
 }
 
 // BBS
@@ -632,11 +624,11 @@ void GLGizmoFdmSupports::update_from_model_object(bool first_update)
 
     int volume_id = -1;
     std::vector<ColorRGBA> ebt_colors;
-    ebt_colors.push_back(GLVolume::NEUTRAL_COLOR);                   // [0] NONE
-    ebt_colors.push_back(TriangleSelectorGUI::enforcers_color);      // [1] ENFORCER      (blue/green)
-    ebt_colors.push_back(TriangleSelectorGUI::blockers_color);       // [2] BLOCKER        (red)
-    ebt_colors.push_back(ColorRGBA{1.0f, 0.6f, 0.0f, 1.0f});        // [3] GRID_ENFORCER  (orange)
-    ebt_colors.push_back(ColorRGBA{0.2f, 0.8f, 0.2f, 1.0f});        // [4] ORGANIC_ENFORCER (green)
+    ebt_colors.push_back(GLVolume::NEUTRAL_COLOR);
+    ebt_colors.push_back(TriangleSelectorGUI::enforcers_color);
+    ebt_colors.push_back(TriangleSelectorGUI::blockers_color);
+    ebt_colors.push_back(ColorRGBA{1.0f, 0.6f, 0.0f, 1.0f}); // GRID_ENFORCER (orange)
+    ebt_colors.push_back(ColorRGBA{0.2f, 0.8f, 0.2f, 1.0f}); // ORGANIC_ENFORCER (green)
     for (const ModelVolume* mv : mo->volumes) {
         if (! mv->is_model_part())
             continue;
@@ -661,30 +653,6 @@ void GLGizmoFdmSupports::update_from_model_object(bool first_update)
 PainterGizmoType GLGizmoFdmSupports::get_painter_type() const
 {
     return PainterGizmoType::FDM_SUPPORTS;
-}
-
-// Map the UI radio-button selection (m_enforcer_type) to the appropriate
-// EnforcerBlockerType that will be stored in the TriangleSelector state.
-//
-//   0 (Snug)    → ENFORCER          – existing behaviour, blue in UI
-//   1 (Grid)    → GRID_ENFORCER     – orange in UI
-//   2 (Organic) → ORGANIC_ENFORCER  – green in UI
-//
-// TODO (backend): SupportMaterial.cpp currently calls
-//   object.project_and_append_custom_facets(false, EnforcerBlockerType::ENFORCER, …)
-//   which only collects triangles with state == ENFORCER.  Once we want
-//   GRID_ENFORCER and ORGANIC_ENFORCER to actually route to different support
-//   algorithms, that function needs additional calls (one per type) and the
-//   slicer back-end needs to process the resulting layer sets with the
-//   corresponding SupportStyle.  For now both new types are painted and stored
-//   correctly but are treated identically to ENFORCER during slicing.
-EnforcerBlockerType GLGizmoFdmSupports::get_left_button_state_type() const
-{
-    switch (m_enforcer_type) {
-        case 1:  return EnforcerBlockerType::GRID_ENFORCER;
-        case 2:  return EnforcerBlockerType::ORGANIC_ENFORCER;
-        default: return EnforcerBlockerType::ENFORCER; // Snug (0) = existing behaviour
-    }
 }
 
 wxString GLGizmoFdmSupports::handle_snapshot_action_name(bool shift_down, GLGizmoPainterBase::Button button_down) const
@@ -954,6 +922,15 @@ void GLGizmoFdmSupports::generate_support_volume()
     lck.unlock();
 
     BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << ",finished finalize_geometry";
+}
+
+EnforcerBlockerType GLGizmoFdmSupports::get_left_button_state_type() const
+{
+    switch (m_enforcer_type) {
+        case 1:  return EnforcerBlockerType::GRID_ENFORCER;
+        case 2:  return EnforcerBlockerType::ORGANIC_ENFORCER;
+        default: return EnforcerBlockerType::ENFORCER;
+    }
 }
 
 } // namespace Slic3r::GUI
