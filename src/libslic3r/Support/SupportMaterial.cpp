@@ -1,9 +1,3 @@
-// TODO: wave overhangs - manual merge needed for TreeSupport.cpp
-// TreeSupport.cpp integration was skipped (too complex). Wave overhangs work with
-// the standard support path via SupportMaterial.cpp (wave coverage subtraction above).
-// If tree support + wave overhangs needs the same "remaining areas" logic, apply
-// a similar diff_ex(overhangs, wave_overhang_covered_polygons) in TreeSupport.cpp.
-
 #include "ClipperUtils.hpp"
 #include "ExtrusionEntity.hpp"
 #include "ExtrusionEntityCollection.hpp"
@@ -2156,19 +2150,7 @@ SupportGeneratorLayersPtr PrintObjectSupportMaterial::top_contact_layers(
                 // unaffected. Sharp-tail / first-layer logic already folded into
                 // overhangs_per_layers; subtracting covered regions is still safe
                 // since wave paths by construction only fill unsupported areas.
-                if (!overhangs_per_layers[layer_id].empty() && !layer.wave_overhang_covered_polygons.empty()) {
-                    bool wave_support_gate = false;
-                    for (size_t ri = 0; ri < object.num_printing_regions(); ++ri) {
-                        const PrintRegionConfig &rc = object.printing_region(ri).config();
-                        if (rc.wave_overhangs.value && rc.support_remaining_areas_after_wave_overhangs.value) {
-                            wave_support_gate = true;
-                            break;
-                        }
-                    }
-                    if (wave_support_gate) {
-                        overhangs_per_layers[layer_id] = diff_ex(overhangs_per_layers[layer_id], layer.wave_overhang_covered_polygons);
-                    }
-                }
+                // (Wave overhang integration removed — code block intentionally omitted.)
 
                 if (object.print()->canceled())
                     break;
