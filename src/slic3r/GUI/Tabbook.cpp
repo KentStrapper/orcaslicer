@@ -15,8 +15,7 @@
 wxDEFINE_EVENT(wxCUSTOMEVT_TABBOOK_SEL_CHANGED, wxCommandEvent);
 
 const static wxColour TAB_BUTTON_BG  = wxColour("#FEFFFF");
-// Kentstrapper: changed from #BFE1DE (teal) to #FFE0B2 (orange tint)
-const static wxColour TAB_BUTTON_SEL = wxColour("#FFE0B2");
+const static wxColour TAB_BUTTON_SEL = wxColour("#FFE0B2"); // Kentstrapper orange tint
 
 static const wxFont& TAB_BUTTON_FONT     = Label::Body_14;
 static const wxFont& TAB_BUTTON_FONT_SEL = Label::Head_14;

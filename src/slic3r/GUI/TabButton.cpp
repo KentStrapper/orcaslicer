@@ -14,12 +14,9 @@ EVT_PAINT(TabButton::paintEvent)
 
 END_EVENT_TABLE()
 
-// Kentstrapper: changed from wxColour(0, 150, 136) teal to orange
-static wxColour BORDER_HOVER_COL = wxColour(255, 136, 0);
-
+static wxColour BORDER_HOVER_COL = wxColour(255, 136, 0); // Kentstrapper orange
 const static wxColour TAB_BUTTON_BG    = wxColour("#FEFFFF");
-// Kentstrapper: changed from #BFE1DE (teal) to #FFE0B2 (orange tint)
-const static wxColour TAB_BUTTON_SEL   = wxColour("#FFE0B2");
+const static wxColour TAB_BUTTON_SEL   = wxColour("#FFE0B2"); // Kentstrapper orange tint
 
 TabButton::TabButton()
     : paddingSize(18, 16) // ORCA reduce / match left margin buttons on sidebars
