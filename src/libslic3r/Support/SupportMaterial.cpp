@@ -1330,12 +1330,10 @@ struct SupportAnnotations
     {
         // Append custom supports.
         object.project_and_append_custom_facets(false, EnforcerBlockerType::ENFORCER, enforcers_layers);
-        // Also collect GRID_ENFORCER and ORGANIC_ENFORCER painted triangles so they actually generate support.
-        // Both are merged into enforcers_layers here, so they go through the same normal-support pipeline.
-        // TODO: Route GRID_ENFORCER through the grid/normal support path and ORGANIC_ENFORCER through the
-        //       tree/organic support path once the tree support generator exposes a per-region enforcer input.
+        // GRID_ENFORCER painted areas go through this normal-support pipeline.
         object.project_and_append_custom_facets(false, EnforcerBlockerType::GRID_ENFORCER, enforcers_layers);
-        object.project_and_append_custom_facets(false, EnforcerBlockerType::ORGANIC_ENFORCER, enforcers_layers);
+        // ORGANIC_ENFORCER areas are intentionally NOT collected here: they are handled by
+        // the tree-support generator (see patch_mixed_support.py / PrintObject.cpp).
         object.project_and_append_custom_facets(false, EnforcerBlockerType::BLOCKER, blockers_layers);
 
         // Expand the blocker a bit. Custom blockers produce strips

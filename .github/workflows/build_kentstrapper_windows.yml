@@ -108,6 +108,12 @@ jobs:
         run: |
           python kentstrapper-patches\scripts\patch_splash.py orcaslicer-source
 
+      # ── PATCH 2c: Mixed support (tree + normal per region) ────────────────
+      - name: Apply mixed-support patches (TreeSupport + PrintObject)
+        shell: pwsh
+        run: |
+          python kentstrapper-patches\scripts\patch_mixed_support.py orcaslicer-source
+
       # ── PATCH 3: Verify colors + full teal scan ───────────────────────────
       - name: Verify color replacement
         shell: pwsh
@@ -407,6 +413,8 @@ jobs:
             - Colori arancione Kentstrapper #FF8800 in tutta la UI
             - Icona e splash screen Kentstrapper
             - Profili filament/machine/process pre-installati
+            - **Hole wall loops**: numero di pareti indipendente per i fori interni
+            - **Supporti misti per regione**: dipingi zone con "Grid" per supporti normali e "Organic" per supporti ad albero sullo stesso pezzo
           draft: false
           prerelease: false
           files: |
