@@ -100,15 +100,21 @@ def main():
     root = sys.argv[1]
     version = sys.argv[2]
 
+    if not version:
+        print("[WARN] Empty version string — skipping version injection")
+        return
+
     cmake_path = os.path.join(root, "CMakeLists.txt")
     if not os.path.exists(cmake_path):
-        print(f"[FAIL] CMakeLists.txt not found at: {cmake_path}")
-        sys.exit(1)
+        print(f"[WARN] CMakeLists.txt not found at: {cmake_path} — skipping")
+        return
 
     ok = patch_cmake(cmake_path, version)
     if not ok:
-        sys.exit(1)
-    print(f"\nVersion injection complete: {version}")
+        print("[WARN] Version injection had no effect — About dialog will show upstream build ID")
+        # Non-fatal: don't break the build over a cosmetic change
+    else:
+        print(f"\nVersion injection complete: {version}")
 
 
 if __name__ == "__main__":

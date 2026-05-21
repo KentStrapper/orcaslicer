@@ -275,12 +275,6 @@ jobs:
             Write-Host "  NSIS profiles injection patched."
           }
 
-      # ── PATCH 8: Inject Kentstrapper version into About dialog ───────────
-      - name: Inject Kentstrapper build version string
-        shell: pwsh
-        run: |
-          python kentstrapper-patches\scripts\patch_version.py orcaslicer-source "${{ env.ver }}"
-
       # ── BUILD ─────────────────────────────────────────────────────────────
       - name: Install NSIS
         run: choco install nsis -y
@@ -297,6 +291,13 @@ jobs:
           echo "ver=$ver" >> $env:GITHUB_ENV
           echo "sha_short=$sha" >> $env:GITHUB_ENV
           echo "date=$(Get-Date -Format 'yyyyMMdd-HHmm')" >> $env:GITHUB_ENV
+
+      # ── PATCH 8: Inject Kentstrapper version into About dialog ───────────
+      # Must run AFTER "Get version" so ${{ env.ver }} is set.
+      - name: Inject Kentstrapper build version string
+        shell: pwsh
+        run: |
+          python kentstrapper-patches\scripts\patch_version.py orcaslicer-source "${{ env.ver }}"
 
       - name: Build OrcaSlicer
         working-directory: orcaslicer-source
