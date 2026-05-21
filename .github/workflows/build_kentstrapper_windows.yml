@@ -54,16 +54,18 @@ jobs:
           path: orcaslicer-source/deps/build/OrcaSlicer_dep
           key: windows-orcaslicer-deps-${{ steps.orca_sha.outputs.sha }}
 
-      - name: Install CMake 3.28.x
+      - name: Install CMake 3.28.3
         shell: pwsh
         run: |
-          pip install "cmake==3.28.4"
-          $cmakeDir = python -c "import cmake; print(cmake.CMAKE_BIN_DIR)"
-          echo $cmakeDir >> $env:GITHUB_PATH
-          Write-Host "CMake dir: $cmakeDir"
-
-      - name: Verify CMake version
-        run: cmake --version
+          Write-Host "Pre-installed cmake: $(cmake --version 2>&1 | Out-String)"
+          Write-Host "Installing cmake 3.28.3 via chocolatey..."
+          choco install cmake --version 3.28.3 --installargs 'ADD_CMAKE_TO_PATH=System' -y --no-progress
+          $chocoExit = $LASTEXITCODE
+          Write-Host "Choco exit code: $chocoExit"
+          $env:PATH = "C:\Program Files\CMake\bin;$env:PATH"
+          echo "C:\Program Files\CMake\bin" >> $env:GITHUB_PATH
+          Write-Host "cmake after install: $(cmake --version 2>&1 | Out-String)"
+          if ($chocoExit -ne 0) { exit 1 }
 
       - name: Setup MSVC
         uses: microsoft/setup-msbuild@v2
