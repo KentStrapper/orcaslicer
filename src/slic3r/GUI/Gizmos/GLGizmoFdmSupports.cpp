@@ -303,11 +303,11 @@ void GLGizmoFdmSupports::on_render_input_window(float x, float y, float bottom_l
     ImGui::Separator();
     m_imgui->text(m_desc.at("enforcer_type"));
     ImGui::SameLine();
-    if (m_imgui->radio_button(m_desc.at("enforcer_snug"),    m_enforcer_type == 0)) m_enforcer_type = 0;
+    if (ImGui::RadioButton(into_u8(m_desc.at("enforcer_snug")).c_str(),    m_enforcer_type == 0)) m_enforcer_type = 0;
     ImGui::SameLine();
-    if (m_imgui->radio_button(m_desc.at("enforcer_grid"),    m_enforcer_type == 1)) m_enforcer_type = 1;
+    if (ImGui::RadioButton(into_u8(m_desc.at("enforcer_grid")).c_str(),    m_enforcer_type == 1)) m_enforcer_type = 1;
     ImGui::SameLine();
-    if (m_imgui->radio_button(m_desc.at("enforcer_organic"), m_enforcer_type == 2)) m_enforcer_type = 2;
+    if (ImGui::RadioButton(into_u8(m_desc.at("enforcer_organic")).c_str(), m_enforcer_type == 2)) m_enforcer_type = 2;
     ImGui::Separator();
 
     if (m_current_tool != old_tool)

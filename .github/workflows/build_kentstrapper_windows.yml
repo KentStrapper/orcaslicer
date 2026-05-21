@@ -275,6 +275,12 @@ jobs:
             Write-Host "  NSIS profiles injection patched."
           }
 
+      # ── PATCH 8: Inject Kentstrapper version into About dialog ───────────
+      - name: Inject Kentstrapper build version string
+        shell: pwsh
+        run: |
+          python kentstrapper-patches\scripts\patch_version.py orcaslicer-source "${{ env.ver }}"
+
       # ── BUILD ─────────────────────────────────────────────────────────────
       - name: Install NSIS
         run: choco install nsis -y
@@ -306,7 +312,7 @@ jobs:
             exit 1
           }
 
-      # ── PATCH 8: Binary-patch color strings directly in the compiled EXE ────
+      # ── PATCH 9: Binary-patch color strings directly in the compiled EXE ────
       # This is the DEFINITIVE approach: replace teal ASCII strings in the binary
       # regardless of compilation caching or any other source-patching issues.
       - name: Binary-patch EXE color strings
