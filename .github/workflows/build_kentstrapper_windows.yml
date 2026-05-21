@@ -76,6 +76,22 @@ jobs:
         working-directory: orcaslicer-source
         run: .\build_release_vs.bat deps
 
+      # ── Diagnostic: verify environment before patching ───────────────────
+      - name: Diagnose build environment
+        shell: pwsh
+        run: |
+          Write-Host "=== Build Environment ==="
+          Write-Host "Python version: $(python --version 2>&1)"
+          Write-Host "Working dir: $(Get-Location)"
+          Write-Host "orcaslicer-source exists: $(Test-Path orcaslicer-source)"
+          Write-Host "kentstrapper-patches exists: $(Test-Path kentstrapper-patches)"
+          if (Test-Path orcaslicer-source) {
+            Write-Host "orcaslicer-source/src exists: $(Test-Path orcaslicer-source\src)"
+            Write-Host "TreeSupport.cpp exists: $(Test-Path orcaslicer-source\src\libslic3r\Support\TreeSupport.cpp)"
+            Write-Host "PrintObject.cpp exists: $(Test-Path orcaslicer-source\src\libslic3r\PrintObject.cpp)"
+            Write-Host "GUI_App.cpp exists: $(Test-Path orcaslicer-source\src\slic3r\GUI\GUI_App.cpp)"
+          }
+
       # ── PATCH 1: Copy patched C++ source files ────────────────────────────
       - name: Apply Kentstrapper patched source files
         shell: pwsh

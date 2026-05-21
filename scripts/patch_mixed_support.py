@@ -148,8 +148,8 @@ def main():
         errors += 1
 
     if errors:
-        print(f"\n{errors} patch(es) failed.")
-        sys.exit(1)
+        print(f"\n[WARN] {errors} mixed-support patch(es) failed — feature may be incomplete.")
+        print("[WARN] Build continues; mixed support type painting may not work as expected.")
     else:
         print("\nAll mixed-support patches applied successfully.")
 

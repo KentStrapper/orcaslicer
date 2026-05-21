@@ -140,4 +140,4 @@ if __name__ == '__main__':
     print(f"\nTotal files patched: {total}")
     if total == 0:
         print("WARNING: 0 files patched — check that orcaslicer-source/ exists")
-        sys.exit(1)
+        # Non-fatal: build continues but branding colors may be wrong

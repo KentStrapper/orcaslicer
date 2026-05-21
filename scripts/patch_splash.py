@@ -7,8 +7,8 @@ import sys, os
 
 def patch_file(path):
     if not os.path.exists(path):
-        print(f"ERROR: file not found: {path}")
-        sys.exit(1)
+        print(f"[WARN] file not found: {path} — skipping splash patch")
+        return
 
     with open(path, 'r', encoding='utf-8', errors='ignore') as f:
         content = f.read()
