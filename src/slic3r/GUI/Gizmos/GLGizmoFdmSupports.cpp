@@ -33,10 +33,16 @@ void GLGizmoFdmSupports::on_shutdown()
     //BBS
     //wait the thread
     if (m_thread.joinable()) {
-        Print *print = m_print_instance.print_object->print();
-        if (print) {
-            BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << "cancel the print";
-            print->cancel();
+        // Guard against dangling pointer: PrintObject is recreated when printer
+        // config changes (e.g. extruder count). The m_cancel flag lets the thread
+        // exit cleanly even if print_object is no longer valid.
+        m_cancel = true;
+        if (m_print_instance.print_object) {
+            Print *print = m_print_instance.print_object->print();
+            if (print) {
+                BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << "cancel the print";
+                print->cancel();
+            }
         }
         //join the thread
         BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << "try to join thread for 2000 ms";
@@ -169,6 +175,11 @@ void GLGizmoFdmSupports::on_set_state()
         m_support_threshold_angle = -1;
     }
     else if (get_state() == Off) {
+        // Clear the print instance pointer so it can never become a dangling
+        // pointer if the PrintObject is recreated (e.g. when extruder count changes).
+        m_cancel = true;
+        m_print_instance.print_object   = nullptr;
+        m_print_instance.model_instance = nullptr;
         ModelObject* mo = m_c->selection_info()->model_object();
         if (mo) Slic3r::save_object_mesh(*mo);
     }
@@ -758,6 +769,9 @@ void GLGizmoFdmSupports::invalid_support_volumes(bool invalid_step)
 bool GLGizmoFdmSupports::need_regenerate_support_volumes()
 {
     if (!m_support_volume)
+        return true;
+
+    if (!m_print_instance.print_object)
         return true;
 
     const ModelObject* mo = m_c->selection_info()->model_object();
