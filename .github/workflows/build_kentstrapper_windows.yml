@@ -55,11 +55,12 @@ jobs:
           key: windows-orcaslicer-deps-${{ steps.orca_sha.outputs.sha }}
 
       - name: Install CMake 3.28.x
-        uses: lukka/get-cmake@v3
-        with:
-          cmakeVersion: "~3.28.0"
-          useLocalCache: true
-          useCloudCache: true
+        shell: pwsh
+        run: |
+          pip install "cmake==3.28.4"
+          $cmakeDir = python -c "import cmake; print(cmake.CMAKE_BIN_DIR)"
+          echo $cmakeDir >> $env:GITHUB_PATH
+          Write-Host "CMake dir: $cmakeDir"
 
       - name: Verify CMake version
         run: cmake --version
