@@ -54,16 +54,12 @@ jobs:
           path: orcaslicer-source/deps/build/OrcaSlicer_dep
           key: windows-orcaslicer-deps-${{ steps.orca_sha.outputs.sha }}
 
-      - name: Install CMake 3.28.3 (direct from Kitware)
-        shell: pwsh
-        run: |
-          $url = "https://github.com/Kitware/CMake/releases/download/v3.28.3/cmake-3.28.3-windows-x86_64.msi"
-          Write-Host "Downloading CMake 3.28.3..."
-          Invoke-WebRequest -Uri $url -OutFile cmake.msi -UseBasicParsing
-          Write-Host "Installing..."
-          Start-Process -Wait msiexec.exe -ArgumentList "/i cmake.msi /quiet ADD_CMAKE_TO_PATH=System"
-          echo "C:\Program Files\CMake\bin" >> $env:GITHUB_PATH
-          Write-Host "CMake installed."
+      - name: Install CMake 3.28.x
+        uses: lukka/get-cmake@v3
+        with:
+          cmakeVersion: "~3.28.0"
+          useLocalCache: true
+          useCloudCache: true
 
       - name: Verify CMake version
         run: cmake --version
