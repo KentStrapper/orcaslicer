@@ -54,30 +54,22 @@ jobs:
           path: orcaslicer-source/deps/build/OrcaSlicer_dep
           key: windows-orcaslicer-deps-${{ steps.orca_sha.outputs.sha }}
 
-      - name: Ensure CMake 3.x (OrcaSlicer v2.3.2 requires < 4.0)
+      - name: Install CMake 3.28.3 (OrcaSlicer v2.3.2 incompatible with cmake 4.x)
         shell: pwsh
         run: |
-          $verLine = cmake --version 2>&1 | Select-Object -First 1
-          Write-Host "Pre-installed cmake: $verLine"
-
-          if ($verLine -match 'cmake version 3\.') {
-            Write-Host "cmake 3.x already present — skipping install"
-            exit 0
-          }
-
-          # cmake 4.x or not found — extract 3.28.3 zip to RUNNER_TEMP
-          Write-Host "cmake 3.x not found — downloading cmake-3.28.3-windows-x86_64.zip..."
+          # Always install cmake 3.28.3 and prepend it to PATH unconditionally.
+          # windows-latest now ships cmake 4.x which breaks OrcaSlicer v2.3.2.
           $zip = "$env:RUNNER_TEMP\cmake-3.28.3.zip"
           $out = "$env:RUNNER_TEMP\cmake-3.28.3"
           [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          Write-Host "Downloading cmake-3.28.3-windows-x86_64.zip..."
           Invoke-WebRequest `
             -Uri "https://github.com/Kitware/CMake/releases/download/v3.28.3/cmake-3.28.3-windows-x86_64.zip" `
             -OutFile $zip -UseBasicParsing
           Expand-Archive $zip $out -Force
           $bin = (Get-ChildItem $out -Directory | Select-Object -First 1).FullName + "\bin"
-          Write-Host "cmake 3.28.3 extracted to: $bin"
+          Write-Host "cmake 3.28.3 installed to: $bin"
           echo $bin >> $env:GITHUB_PATH
-          $env:PATH = "$bin;$env:PATH"
 
       - name: Verify CMake version is 3.x
         shell: pwsh
