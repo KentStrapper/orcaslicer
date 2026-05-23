@@ -329,19 +329,14 @@ jobs:
             $last | ForEach-Object { Write-Host $_ }
             $cmake_ver   = cmake --version 2>&1 | Select-Object -First 1
             $msbuild_ver = msbuild -version 2>&1 | Select-Object -First 1
-            @"
-## Build OrcaSlicer FAILED
-
-| Tool | Version |
-|------|---------|
-| cmake | $cmake_ver |
-| msbuild | $msbuild_ver |
-
-### Last 200 lines of build output
-``````
-$($last -join "`n")
-``````
-"@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            $summary  = "## Build OrcaSlicer FAILED`n`n"
+            $summary += "| Tool | Version |`n|------|---------|`n"
+            $summary += "| cmake | $cmake_ver |`n"
+            $summary += "| msbuild | $msbuild_ver |`n`n"
+            $summary += "### Last 200 lines``n``````n"
+            $summary += ($last -join "`n")
+            $summary += "`n``````"
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary -Encoding UTF8
             exit 1
           }
 
