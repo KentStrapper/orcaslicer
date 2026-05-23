@@ -54,6 +54,20 @@ jobs:
           path: orcaslicer-source/deps/build/OrcaSlicer_dep
           key: windows-orcaslicer-deps-${{ steps.orca_sha.outputs.sha }}
 
+      - name: Install CMake 3.28.3 (OrcaSlicer v2.3.2 incompatible with system cmake)
+        shell: pwsh
+        run: |
+          $url = "https://github.com/Kitware/CMake/releases/download/v3.28.3/cmake-3.28.3-windows-x86_64.msi"
+          Write-Host "Downloading CMake 3.28.3 MSI..."
+          Invoke-WebRequest -Uri $url -OutFile cmake.msi -UseBasicParsing
+          Write-Host "Installing CMake 3.28.3..."
+          Start-Process -Wait msiexec.exe -ArgumentList "/i cmake.msi /quiet ADD_CMAKE_TO_PATH=System"
+          echo "C:\Program Files\CMake\bin" >> $env:GITHUB_PATH
+          Write-Host "CMake 3.28.3 installed to C:\Program Files\CMake\bin"
+
+      - name: Verify CMake version
+        run: cmake --version
+
       - name: Setup MSVC
         uses: microsoft/setup-msbuild@v2
 
