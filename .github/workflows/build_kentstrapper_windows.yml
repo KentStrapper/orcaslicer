@@ -138,6 +138,10 @@ jobs:
         shell: pwsh
         run: |
           python kentstrapper-patches\scripts\patch_mixed_support.py orcaslicer-source
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "ERROR: mixed-support patches failed to apply — aborting build."
+            exit 1
+          }
 
       # ── PATCH 3: Verify colors + full teal scan ───────────────────────────
       - name: Verify color replacement

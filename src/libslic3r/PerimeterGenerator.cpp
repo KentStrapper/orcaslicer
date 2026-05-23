@@ -1369,6 +1369,24 @@ void PerimeterGenerator::process_classic()
             if (hole_loop_number < loop_number) {
                 for (int d = hole_loop_number + 1; d <= loop_number; ++d)
                     holes[d].clear();
+                // Compensate 'last' (infill region): the main offset loop grew the hole
+                // voids by loop_number iterations, but we only print hole_loop_number
+                // perimeters. Contract the hole polygons in 'last' by the difference so
+                // infill fills right up to the innermost printed hole perimeter.
+                const coord_t hole_restore = coord_t(loop_number - hole_loop_number) * perimeter_spacing;
+                ExPolygons fixed_last;
+                fixed_last.reserve(last.size());
+                for (const ExPolygon &ep : last) {
+                    ExPolygon fixed;
+                    fixed.contour = ep.contour;
+                    for (const Polygon &hole : ep.holes) {
+                        // Positive offset contracts a CW (hole) polygon inward.
+                        Polygons shrunk = offset({hole}, float(hole_restore));
+                        append(fixed.holes, shrunk);
+                    }
+                    fixed_last.push_back(std::move(fixed));
+                }
+                last = std::move(fixed_last);
             }
 
             // nest loops: holes first
