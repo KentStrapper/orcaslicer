@@ -54,34 +54,6 @@ jobs:
           path: orcaslicer-source/deps/build/OrcaSlicer_dep
           key: windows-orcaslicer-deps-${{ steps.orca_sha.outputs.sha }}
 
-      - name: Install CMake 3.28.3 (OrcaSlicer v2.3.2 incompatible with cmake 4.x)
-        shell: pwsh
-        run: |
-          # Always install cmake 3.28.3 and prepend it to PATH unconditionally.
-          # windows-latest now ships cmake 4.x which breaks OrcaSlicer v2.3.2.
-          $zip = "$env:RUNNER_TEMP\cmake-3.28.3.zip"
-          $out = "$env:RUNNER_TEMP\cmake-3.28.3"
-          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-          Write-Host "Downloading cmake-3.28.3-windows-x86_64.zip..."
-          Invoke-WebRequest `
-            -Uri "https://github.com/Kitware/CMake/releases/download/v3.28.3/cmake-3.28.3-windows-x86_64.zip" `
-            -OutFile $zip -UseBasicParsing
-          Expand-Archive $zip $out -Force
-          $bin = (Get-ChildItem $out -Directory | Select-Object -First 1).FullName + "\bin"
-          Write-Host "cmake 3.28.3 installed to: $bin"
-          echo $bin >> $env:GITHUB_PATH
-
-      - name: Verify CMake version is 3.x
-        shell: pwsh
-        run: |
-          $ver = cmake --version 2>&1 | Select-Object -First 1
-          Write-Host "Active cmake: $ver"
-          if ($ver -notmatch 'cmake version 3\.') {
-            Write-Host "ERROR: cmake 3.x required, got: $ver"
-            exit 1
-          }
-          Write-Host "cmake 3.x confirmed OK"
-
       - name: Setup MSVC
         uses: microsoft/setup-msbuild@v2
 
@@ -352,8 +324,24 @@ jobs:
         run: |
           .\build_release_vs.bat slicer 2>&1 | Tee-Object -FilePath ..\build_output.txt
           if ($LASTEXITCODE -ne 0) {
-            Write-Host "=== LAST 150 LINES OF BUILD OUTPUT (errors) ==="
-            Get-Content ..\build_output.txt | Select-Object -Last 150
+            $last = Get-Content ..\build_output.txt | Select-Object -Last 200
+            Write-Host "=== LAST 200 LINES OF BUILD OUTPUT ==="
+            $last | ForEach-Object { Write-Host $_ }
+            $cmake_ver   = cmake --version 2>&1 | Select-Object -First 1
+            $msbuild_ver = msbuild -version 2>&1 | Select-Object -First 1
+            @"
+## Build OrcaSlicer FAILED
+
+| Tool | Version |
+|------|---------|
+| cmake | $cmake_ver |
+| msbuild | $msbuild_ver |
+
+### Last 200 lines of build output
+``````
+$($last -join "`n")
+``````
+"@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
             exit 1
           }
 
