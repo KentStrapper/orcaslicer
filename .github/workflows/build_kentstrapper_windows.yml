@@ -88,6 +88,12 @@ jobs:
             Write-Host "No src/ patches, skipping."
           }
 
+      # ── PATCH 1b: Fix extruder count save crash (Config.hpp set_with_nil) ──
+      - name: Fix extruder count crash (backport OrcaSlicer PR 13035)
+        shell: pwsh
+        run: |
+          python kentstrapper-patches\scripts\patch_extruder_count.py orcaslicer-source
+
       # ── PATCH 2: Global color replacement ────────────────────────────────
       - name: Apply Kentstrapper branding - global color replacement
         shell: pwsh
