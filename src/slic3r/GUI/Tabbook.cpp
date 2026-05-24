@@ -65,7 +65,8 @@ void TabButtonsListCtrl::OnPaint(wxPaintEvent &)
     if (m_selection < 0 || m_selection >= (int)m_pageButtons.size())
         return;
 
-    const wxColour& btn_marker_color = Slic3r::GUI::wxGetApp().get_color_hovered_btn_label();
+    // Kentstrapper: override with brand orange instead of upstream teal
+    const wxColour btn_marker_color = wxColour(0xFF, 0x88, 0x00);
 
     // highlight selected notebook button
 
