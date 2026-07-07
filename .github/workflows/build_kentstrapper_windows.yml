@@ -36,8 +36,8 @@ jobs:
         with:
           path: kentstrapper-patches
 
-      - name: Clone OrcaSlicer v2.4.1 (stable)
-        run: git clone --depth 1 --branch v2.4.1 https://github.com/SoftFever/OrcaSlicer.git orcaslicer-source
+      - name: Clone OrcaSlicer v2.4.2 (stable)
+        run: git clone --depth 1 --branch v2.4.2 https://github.com/SoftFever/OrcaSlicer.git orcaslicer-source
 
       - name: Get OrcaSlicer commit SHA (for cache key)
         id: orca_sha
@@ -388,7 +388,7 @@ jobs:
           body: |
             ## OrcaSlicer branded version by Kentstrapper — ${{ env.ver }}
 
-            OrcaSlicer **v2.4.1 stabile** rebranded con i colori aziendali Kentstrapper.
+            OrcaSlicer **v2.4.2 stabile** rebranded con i colori aziendali Kentstrapper.
 
             ### Download
             - **Installer** (`.exe`) — consigliato, include profili pre-installati
