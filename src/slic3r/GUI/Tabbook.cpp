@@ -15,8 +15,8 @@
 wxDEFINE_EVENT(wxCUSTOMEVT_TABBOOK_SEL_CHANGED, wxCommandEvent);
 
 const static wxColour TAB_BUTTON_BG  = wxColour("#FEFFFF");
-// Kentstrapper: changed from #BFE1DE (teal) to #FFE0B2 (orange tint)
-const static wxColour TAB_BUTTON_SEL = wxColour("#FFE0B2");
+// Kentstrapper: solid orange for selected tab
+const static wxColour TAB_BUTTON_SEL = wxColour("#FF8800");
 
 static const wxFont& TAB_BUTTON_FONT     = Label::Body_14;
 static const wxFont& TAB_BUTTON_FONT_SEL = Label::Head_14;
@@ -66,7 +66,8 @@ void TabButtonsListCtrl::OnPaint(wxPaintEvent &)
     if (m_selection < 0 || m_selection >= (int)m_pageButtons.size())
         return;
 
-    const wxColour& btn_marker_color = Slic3r::GUI::wxGetApp().get_color_hovered_btn_label();
+    // Kentstrapper: hardcode orange instead of app teal accent
+    const wxColour btn_marker_color = wxColour(0xFF, 0x88, 0x00);
 
     // highlight selected notebook button
 
