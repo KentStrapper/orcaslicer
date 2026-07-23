@@ -139,9 +139,22 @@ void TabButton::paintEvent(wxPaintEvent &evt)
  */
 void TabButton::render(wxDC &dc)
 {
-    StaticBox::render(dc);
     int    states = state_handler.states();
     wxSize size   = GetSize();
+
+    // Draw background directly — bypass StaticBox rendering path and dark-mode
+    // transforms so SetBackgroundColor(#FF8800) is always honoured as-is.
+    wxColour bg;
+    if (background_color.count() > 0) {
+        bg = background_color.colorForStatesNoDark(states);
+        if (!bg.IsOk() || bg.Alpha() == 0)
+            bg = GetBackgroundColour();
+    } else {
+        bg = GetBackgroundColour();
+    }
+    dc.SetPen(wxPen(bg));
+    dc.SetBrush(wxBrush(bg));
+    dc.DrawRectangle(0, 0, size.x, size.y);
 
     dc.SetPen(wxPen(border_color.colorForStates(states)));
     dc.SetBrush(*wxTRANSPARENT_BRUSH);
