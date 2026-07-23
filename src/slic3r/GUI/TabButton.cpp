@@ -14,24 +14,27 @@ EVT_PAINT(TabButton::paintEvent)
 
 END_EVENT_TABLE()
 
-// Kentstrapper: changed from wxColour(0, 150, 136) teal to orange
+// Kentstrapper: orange accent for hover and selection
 static wxColour BORDER_HOVER_COL = wxColour(255, 136, 0);
 
 const static wxColour TAB_BUTTON_BG    = wxColour("#FEFFFF");
-// Kentstrapper: changed from #BFE1DE (teal) to #FFE0B2 (orange tint)
-const static wxColour TAB_BUTTON_SEL   = wxColour("#FFE0B2");
+// Kentstrapper: solid orange for selected tab
+const static wxColour TAB_BUTTON_SEL   = wxColour("#FF8800");
+// Kentstrapper: slightly lighter orange for hover on selected tab
+const static wxColour TAB_BUTTON_SEL_HOVER = wxColour("#FFA030");
 
 TabButton::TabButton()
     : paddingSize(18, 16) // ORCA reduce / match left margin buttons on sidebars
     , text_color(*wxBLACK)
 {
     background_color = StateColor(
+        std::make_pair(TAB_BUTTON_SEL_HOVER, (int) StateColor::Checked | (int) StateColor::Hovered),
         std::make_pair(TAB_BUTTON_SEL, (int) StateColor::Checked),
-        std::make_pair(wxColour("#FEFFFF"), (int) StateColor::Hovered),
+        std::make_pair(wxColour("#FFF3E0"), (int) StateColor::Hovered),
         std::make_pair(wxColour("#FEFFFF"), (int) StateColor::Normal));
 
     border_color = StateColor(
-        std::make_pair(TAB_BUTTON_SEL, (int) StateColor::Checked), // ORCA use same color for border to prevent 1px blank border
+        std::make_pair(TAB_BUTTON_SEL, (int) StateColor::Checked),
         std::make_pair(BORDER_HOVER_COL, (int) StateColor::Hovered),
         std::make_pair(wxColour("#FEFFFF"), (int)StateColor::Normal));
 }
