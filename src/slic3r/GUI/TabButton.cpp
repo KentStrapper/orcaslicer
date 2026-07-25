@@ -148,6 +148,8 @@ void TabButton::render(wxDC &dc)
     if (background_color.count() > 0) {
         bg = background_color.colorForStatesNoDark(states);
         if (!bg.IsOk() || bg.Alpha() == 0)
+            bg = background_color.colorForStatesNoDark(0xFFFF);
+        if (!bg.IsOk() || bg.Alpha() == 0)
             bg = GetBackgroundColour();
     } else {
         bg = GetBackgroundColour();
