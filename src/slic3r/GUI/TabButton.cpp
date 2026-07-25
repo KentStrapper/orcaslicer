@@ -18,25 +18,22 @@ END_EVENT_TABLE()
 static wxColour BORDER_HOVER_COL = wxColour(255, 136, 0);
 
 const static wxColour TAB_BUTTON_BG    = wxColour("#FEFFFF");
-// Kentstrapper: solid orange for selected tab
 const static wxColour TAB_BUTTON_SEL   = wxColour("#FF8800");
-// Kentstrapper: slightly lighter orange for hover on selected tab
-const static wxColour TAB_BUTTON_SEL_HOVER = wxColour("#FFA030");
+const static wxColour TAB_BUTTON_HOVER = wxColour("#FFF3E0");
 
 TabButton::TabButton()
     : paddingSize(18, 16) // ORCA reduce / match left margin buttons on sidebars
     , text_color(*wxBLACK)
 {
     background_color = StateColor(
-        std::make_pair(TAB_BUTTON_SEL_HOVER, (int) StateColor::Checked | (int) StateColor::Hovered),
-        std::make_pair(TAB_BUTTON_SEL, (int) StateColor::Checked),
-        std::make_pair(wxColour("#FFF3E0"), (int) StateColor::Hovered),
-        std::make_pair(wxColour("#FEFFFF"), (int) StateColor::Normal));
+        std::make_pair(TAB_BUTTON_SEL,   (int) StateColor::Checked),
+        std::make_pair(TAB_BUTTON_HOVER, (int) StateColor::Hovered),
+        std::make_pair(TAB_BUTTON_BG,    (int) StateColor::Normal));
 
     border_color = StateColor(
-        std::make_pair(TAB_BUTTON_SEL, (int) StateColor::Checked),
+        std::make_pair(TAB_BUTTON_SEL,   (int) StateColor::Checked),
         std::make_pair(BORDER_HOVER_COL, (int) StateColor::Hovered),
-        std::make_pair(wxColour("#FEFFFF"), (int)StateColor::Normal));
+        std::make_pair(wxColour("#FEFFFF"), (int) StateColor::Normal));
 }
 
 TabButton::TabButton(wxWindow *parent, wxString text, ScalableBitmap &bmp, long style, int iconSize)
@@ -139,24 +136,13 @@ void TabButton::paintEvent(wxPaintEvent &evt)
  */
 void TabButton::render(wxDC &dc)
 {
+    // Let StaticBox draw the background rectangle using background_color.
+    // Tab buttons always have radius=0, so StaticBox::render goes directly
+    // to doRender() without any memDC — no teal-bleed risk.
+    StaticBox::render(dc);
+
     int    states = state_handler.states();
     wxSize size   = GetSize();
-
-    // Draw background directly — bypass StaticBox rendering path and dark-mode
-    // transforms so SetBackgroundColor(#FF8800) is always honoured as-is.
-    wxColour bg;
-    if (background_color.count() > 0) {
-        bg = background_color.colorForStatesNoDark(states);
-        if (!bg.IsOk() || bg.Alpha() == 0)
-            bg = background_color.colorForStatesNoDark(0xFFFF);
-        if (!bg.IsOk() || bg.Alpha() == 0)
-            bg = GetBackgroundColour();
-    } else {
-        bg = GetBackgroundColour();
-    }
-    dc.SetPen(wxPen(bg));
-    dc.SetBrush(wxBrush(bg));
-    dc.DrawRectangle(0, 0, size.x, size.y);
 
     dc.SetPen(wxPen(border_color.colorForStates(states)));
     dc.SetBrush(*wxTRANSPARENT_BRUSH);
