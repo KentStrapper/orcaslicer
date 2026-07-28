@@ -18,17 +18,17 @@ END_EVENT_TABLE()
 static wxColour BORDER_HOVER_COL = wxColour(255, 136, 0);
 
 const static wxColour TAB_BUTTON_BG    = wxColour("#FEFFFF");
-const static wxColour TAB_BUTTON_SEL   = wxColour("#FF8800");
-const static wxColour TAB_BUTTON_HOVER = wxColour("#FFF3E0");
+// Kentstrapper: light orange tint for selected tab (same as v2.3.2 - avoids teal from UpdateDarkUI)
+const static wxColour TAB_BUTTON_SEL   = wxColour("#FFE0B2");
 
 TabButton::TabButton()
     : paddingSize(18, 16) // ORCA reduce / match left margin buttons on sidebars
     , text_color(*wxBLACK)
 {
     background_color = StateColor(
-        std::make_pair(TAB_BUTTON_SEL,   (int) StateColor::Checked),
-        std::make_pair(TAB_BUTTON_HOVER, (int) StateColor::Hovered),
-        std::make_pair(TAB_BUTTON_BG,    (int) StateColor::Normal));
+        std::make_pair(TAB_BUTTON_SEL,     (int) StateColor::Checked),
+        std::make_pair(wxColour("#FEFFFF"), (int) StateColor::Hovered),
+        std::make_pair(wxColour("#FEFFFF"), (int) StateColor::Normal));
 
     border_color = StateColor(
         std::make_pair(TAB_BUTTON_SEL,   (int) StateColor::Checked),
@@ -136,9 +136,6 @@ void TabButton::paintEvent(wxPaintEvent &evt)
  */
 void TabButton::render(wxDC &dc)
 {
-    // Let StaticBox draw the background rectangle using background_color.
-    // Tab buttons always have radius=0, so StaticBox::render goes directly
-    // to doRender() without any memDC — no teal-bleed risk.
     StaticBox::render(dc);
 
     int    states = state_handler.states();

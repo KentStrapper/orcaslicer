@@ -8,7 +8,6 @@
 
 //BBS set font size
 #include "Widgets/Label.hpp"
-#include "Widgets/StateColor.hpp"
 
 #include <wx/button.h>
 #include <wx/sizer.h>
@@ -16,8 +15,8 @@
 wxDEFINE_EVENT(wxCUSTOMEVT_TABBOOK_SEL_CHANGED, wxCommandEvent);
 
 const static wxColour TAB_BUTTON_BG  = wxColour("#FEFFFF");
-// Kentstrapper: solid orange for selected tab
-const static wxColour TAB_BUTTON_SEL = wxColour("#FF8800");
+// Kentstrapper: light orange tint for selected tab (avoids teal from UpdateDarkUI)
+const static wxColour TAB_BUTTON_SEL = wxColour("#FFE0B2");
 
 static const wxFont& TAB_BUTTON_FONT     = Label::Body_14;
 static const wxFont& TAB_BUTTON_FONT_SEL = Label::Head_14;
@@ -25,20 +24,6 @@ static const wxFont& TAB_BUTTON_FONT_SEL = Label::Head_14;
 
 static const int BUTTON_DEF_HEIGHT = 46;
 static const int BUTTON_DEF_WIDTH  = 220;
-
-static StateColor tabBgSelected()
-{
-    return StateColor(
-        std::make_pair(wxColour("#FFA030"), (int) StateColor::Hovered),
-        std::make_pair(wxColour("#FF8800"), (int) StateColor::Normal));
-}
-
-static StateColor tabBgNormal()
-{
-    return StateColor(
-        std::make_pair(wxColour("#FFF3E0"), (int) StateColor::Hovered),
-        std::make_pair(wxColour("#FEFFFF"), (int) StateColor::Normal));
-}
 
 TabButtonsListCtrl::TabButtonsListCtrl(wxWindow *parent, wxBoxSizer *side_tools) :
     wxControl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE | wxTAB_TRAVERSAL)
@@ -87,7 +72,7 @@ void TabButtonsListCtrl::OnPaint(wxPaintEvent &)
 
     for (int idx = 0; idx < int(m_pageButtons.size()); idx++) {
         TabButton *btn = m_pageButtons[idx];
-        btn->SetBackgroundColor(idx == m_selection ? tabBgSelected() : tabBgNormal());
+        btn->SetBackgroundColor(idx == m_selection ? TAB_BUTTON_SEL : TAB_BUTTON_BG);
 
         wxPoint pos = btn->GetPosition();
         wxSize size = btn->GetSize();
@@ -120,11 +105,11 @@ void TabButtonsListCtrl::SetSelection(int sel)
     if (m_selection == sel)
         return;
     if (m_selection >= 0) {
-        m_pageButtons[m_selection]->SetBackgroundColor(tabBgNormal());
+        m_pageButtons[m_selection]->SetBackgroundColor(TAB_BUTTON_BG);
         m_pageButtons[m_selection]->SetFont(TAB_BUTTON_FONT);
     }
     m_selection = sel;
-    m_pageButtons[m_selection]->SetBackgroundColor(tabBgSelected());
+    m_pageButtons[m_selection]->SetBackgroundColor(TAB_BUTTON_SEL);
     m_pageButtons[m_selection]->SetFont(TAB_BUTTON_FONT_SEL);
     Refresh();
 }
@@ -148,7 +133,7 @@ bool TabButtonsListCtrl::InsertPage(size_t n, const wxString &text, bool bSelect
     int em = em_unit(this);
     btn->SetMinSize({BUTTON_DEF_WIDTH * em / 10, BUTTON_DEF_HEIGHT * em / 10});
 
-    btn->SetBackgroundColor(tabBgNormal());
+    btn->SetBackgroundColor(TAB_BUTTON_BG);
     btn->SetTextColor(*wxBLACK);
     btn->Bind(wxEVT_BUTTON, [this, btn](wxCommandEvent& event) {
         if (auto it = std::find(m_pageButtons.begin(), m_pageButtons.end(), btn); it != m_pageButtons.end()) {
