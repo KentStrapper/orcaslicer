@@ -73,6 +73,7 @@ REPLACEMENTS = [
     # RGB decimal format: wxColour(0, 150, 136)
     ("0, 150, 136",  "255, 136, 0"),
     ("0,150,136",    "255,136,0"),
+    ("0,150, 136",   "255,136, 0"),     # mixed spacing variant found in Notebook.cpp
     ("0, 150, 136,", "255, 136, 0,"),   # with trailing comma
 
     # Additional teal/green shades found in MainFrame.cpp, AmsWidgets, etc.
