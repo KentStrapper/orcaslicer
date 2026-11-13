@@ -36,8 +36,8 @@ jobs:
         with:
           path: kentstrapper-patches
 
-      - name: Clone OrcaSlicer v2.4.2 (stable)
-        run: git clone --depth 1 --branch v2.4.2 https://github.com/SoftFever/OrcaSlicer.git orcaslicer-source
+      - name: Clone OrcaSlicer v2.5.0 (stable)
+        run: git clone --depth 1 --branch v2.5.0 https://github.com/SoftFever/OrcaSlicer.git orcaslicer-source
 
       - name: Get OrcaSlicer commit SHA (for cache key)
         id: orca_sha
@@ -66,7 +66,9 @@ jobs:
       - name: Build dependencies (only if not cached)
         if: steps.cache_deps.outputs.cache-hit != 'true'
         working-directory: orcaslicer-source
-        run: .\build_release_vs.bat deps
+        # v2.5.0 replaced build_release_vs.bat with build_win.bat.
+        # -d builds deps into deps/build/OrcaSlicer_dep (same path as before, so the cache still matches).
+        run: .\build_win.bat -d
 
       # ── PATCH 1: Copy patched C++ source files ────────────────────────────
       - name: Apply Kentstrapper patched source files
@@ -290,7 +292,9 @@ jobs:
         env:
           WindowsSdkDir: 'C:\Program Files (x86)\Windows Kits\10\'
           WindowsSDKVersion: '10.0.26100.0\'
-        run: .\build_release_vs.bat slicer
+        # -s builds the slicer in build/, -i installs it into build/OrcaSlicer
+        # (what the old "build_release_vs.bat slicer" did; the zip and cpack steps rely on it).
+        run: .\build_win.bat -s -i
 
       # ── PATCH 8: Binary-patch color strings directly in the compiled EXE ────
       # This is the DEFINITIVE approach: replace teal ASCII strings in the binary
@@ -389,7 +393,7 @@ jobs:
           body: |
             ## OrcaSlicer branded version by Kentstrapper — ${{ env.ver }}
 
-            OrcaSlicer **v2.4.2 stabile** rebranded con i colori aziendali Kentstrapper.
+            OrcaSlicer **v2.5.0 stabile** rebranded con i colori aziendali Kentstrapper.
 
             ### Download
             - **Installer** (`.exe`) — consigliato, include profili pre-installati

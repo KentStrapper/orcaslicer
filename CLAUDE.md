@@ -3,7 +3,9 @@
 ## Architettura del progetto
 
 Questo repo contiene **solo le patch Kentstrapper** (non il sorgente upstream).
-La CI clona `SoftFever/OrcaSlicer v2.4.2` al momento della build e applica le patch.
+La CI clona `SoftFever/OrcaSlicer v2.5.0` al momento della build e applica le patch.
+Dalla v2.5.0 la build si fa con `build_win.bat -d` (dipendenze) e `build_win.bat -s -i`
+(slicer + install in `build/OrcaSlicer`): il vecchio `build_release_vs.bat` non esiste più.
 
 ```
 kentstrapper-patches/   ← questo repo
@@ -13,7 +15,8 @@ orcaslicer-source/      ← clonato dalla CI a build time
 ## Come funzionano le patch (ordine CI)
 
 1. **PATCH 1** — copia i file `.cpp`/`.hpp` da `src/` sopra i corrispondenti upstream
-2. **PATCH 1b** — `scripts/patch_extruder_count.py` (fix crash conteggio estrusori)
+2. **PATCH 1b** — `scripts/patch_extruder_count.py` (fix crash conteggio estrusori; dalla
+   v2.5.0 il fix è già upstream e lo script non fa nulla)
 3. **PATCH 2** — `scripts/patch_colors.py` (sostituzione globale teal → arancione)
 4. **PATCH 2b** — `scripts/patch_splash.py` (splash screen)
 5. **PATCH 3** — verifica che non rimanga nessun teal nei file chiave + scan globale
@@ -52,14 +55,36 @@ mouse non era sopra.
 **Soluzione**: `Notebook.cpp` è ora un file overlay in questo repo (PATCH 1 lo copia
 sull'upstream). Non affidarsi solo a `patch_colors.py` per i file critici dell'UI.
 
-## Procedura per una nuova release
+## Lezione imparata: overlay vecchi annullano fix upstream
 
-1. Aggiornare la versione upstream nel workflow se necessario
-   (`.github/workflows/build_kentstrapper_windows.yml`, step "Clone OrcaSlicer")
-2. Verificare che i file overlay in `src/` siano ancora compatibili con l'upstream
-   (confrontare con `SoftFever/OrcaSlicer` tag corrispondente)
-3. Push su `main` → la CI crea automaticamente una release GitHub
-4. Testare visivamente: barra superiore e sidebar devono essere **arancioni**, non verdi
+Gli overlay sostituiscono il file upstream **intero**. Nella 2.4.2 `Button.cpp` e
+`StateColor.cpp` erano basati su una versione più vecchia e annullavano per errore codice
+upstream (pulsanti `ButtonType::Icon`, fix tooltip Wayland, colore toggle in dark mode).
+Un overlay deve differire dall'upstream della sua versione **solo** per le modifiche
+Kentstrapper (colori + i fix di `StaticBox.cpp`).
+
+## Procedura per una nuova versione upstream (es. 2.5.0 → 2.6.0)
+
+1. Clonare upstream vecchia (`VECCHIA`) e nuova (`NUOVA`) versione
+2. Per ogni file in `src/`: confrontare `VECCHIA` vs `NUOVA`. Se cambiato (anche il `.hpp`),
+   non copiare l'overlay così com'è: fare un merge a 3 vie
+   `git merge-file overlay VECCHIA/file NUOVA/file` e risolvere i conflitti tenendo il
+   codice nuovo con i nostri colori
+3. `diff NUOVA/file overlay` deve mostrare **solo** modifiche Kentstrapper
+4. Simulare PATCH 1 → 1b → 2 → 2b → 3 sui sorgenti nuovi: zero teal residuo, script OK
+5. Cercare colori verdi/teal nuovi introdotti dalla versione nuova e aggiungerli a
+   `patch_colors.py`
+6. Controllare che gli script di build e i file usati da PATCH 4–7 esistano ancora
+7. Aggiornare tag nel workflow (step "Clone OrcaSlicer") e il testo della release
+8. Prima build di prova: lanciare il workflow a mano sul branch di sviluppo con
+   `create-release` = false (nessuna release). Poi push su `main` → release automatica
+9. Testare visivamente: barra superiore e sidebar devono essere **arancioni**, non verdi
+
+## Problema noto (da sistemare)
+
+PATCH 6 e 7 cercano un file `.nsi` che upstream non ha (né in 2.4.2 né in 2.5.0): il
+nome dell'installer e la copia dei profili in `%APPDATA%\OrcaSlicer\user\default` non
+vengono applicati. I profili finiscono solo in `resources/kentstrapper_profiles`.
 
 ## Reference release funzionante
 
