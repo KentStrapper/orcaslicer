@@ -3,7 +3,7 @@
 ## Architettura del progetto
 
 Questo repo contiene **solo le patch Kentstrapper** (non il sorgente upstream).
-La CI clona `SoftFever/OrcaSlicer v2.5.1` al momento della build e applica le patch.
+La CI clona `SoftFever/OrcaSlicer v2.5.2` al momento della build e applica le patch.
 Dalla v2.5.0 la build si fa con `build_win.bat -d` (dipendenze) e `build_win.bat -s -i`
 (slicer + install in `build/OrcaSlicer`): il vecchio `build_release_vs.bat` non esiste più.
 
